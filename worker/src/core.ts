@@ -277,8 +277,9 @@ export class Tenant {
     return this.#serial(async () => {
       if (!this.#meta('tenant')) return ok({ started: false, duplicate: false })
       if (this.#meta('checkout_session') === session) for (const k of CHECKOUT_KEYS) this.#deleteMeta(k)
-      if (this.#meta('stripe_subscription') === subscription || this.#meta(`duplicate:${subscription}`) || this.#meta(`ended:${subscription}`)) return ok({ started: false, duplicate: false })
+      if (this.#meta('stripe_subscription') === subscription || this.#meta(`duplicate:${subscription}`)) return ok({ started: false, duplicate: false })
       if (this.#meta('plan') === 'pro') return ok({ started: false, duplicate: true })
+      if (this.#meta(`ended:${subscription}`)) return ok({ started: false, duplicate: false })
       this.#sql.transactionSync(() => {
         this.#setMeta('plan', 'pro')
         this.#setMeta('stripe_customer', customer)

@@ -286,6 +286,21 @@ describe('POST /billing/stripe', () => {
     expect(mails[1]).toEqual(duplicateMail(tenant, 'sub_2', 'cs_for_sub_2', false))
   })
 
+  it('still sends the duplicate notice when the duplicate\'s deletion arrives before the redelivered completion', async () => {
+    const { tenant, stub } = await account()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await webhook(completed(tenant, 'sub_1'))
+    expect((await webhook(deleted(tenant, 'sub_2'))).status).toBe(200)
+    expect(await meta(stub, 'ended:sub_2')).toBe('1')
+    calls = []
+    duplicateStatus = 'canceled'
+    expect((await webhook(completed(tenant, 'sub_2'))).status).toBe(200)
+    expect(calls.map(route)).toEqual(['GET /subscriptions/sub_2'])
+    expect([await meta(stub, 'plan'), await meta(stub, 'stripe_subscription')]).toEqual(['pro', 'sub_1'])
+    await settled()
+    expect(mails[1]).toEqual(duplicateMail(tenant, 'sub_2', 'cs_for_sub_2', false))
+  })
+
   it('still answers 200 when the duplicate notice cannot be sent, and logs the failure', async () => {
     const { tenant, stub } = await account()
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -474,6 +489,8 @@ describe('the ledger billing calls', () => {
     expect(await stub.billingStart('cus_1', 'sub_2', 'cs_2')).toEqual({ ok: true, value: { started: true, duplicate: false } })
     expect(await stub.billingEnd('sub_2')).toEqual({ ok: true, value: { ended: true } })
     expect(await meta(stub, 'ended:sub_2')).toBe('1')
+    expect(await stub.billingStart('cus_1', 'sub_3', 'cs_3')).toEqual({ ok: true, value: { started: true, duplicate: false } })
+    expect(await stub.billingStart('cus_1', 'sub_2', 'cs_2')).toEqual({ ok: true, value: { started: false, duplicate: true } })
   })
 
   it('end only the current subscription of a Pro tenant, dropping its report in flight', async () => {
