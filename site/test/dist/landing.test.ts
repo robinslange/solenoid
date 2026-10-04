@@ -38,10 +38,7 @@ describe('the landing page', () => {
       expect(textOf(byClass(section(id), 'agent-prompt')[0])).toContain('--per child')
       expect(textOf(byClass(section(id), 'limit-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=3 --per child')
     }
-    for (const id of ['hero', 'start']) {
-      expect(textOf(byClass(section(id), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=0')
-      expect(hrefs(section(id))).toContain('/pricing')
-    }
+    for (const id of ['hero', 'start']) expect(textOf(byClass(section(id), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=0')
   })
 
   it('puts a Start link to the bottom call to action in the header', () => {

@@ -57,3 +57,35 @@ The start steps (`site/src/components/StartSteps.astro`) now carry the stop and 
   Before: "Every recorded spend comes back with a signed receipt."
   After: "Every recorded spend comes back with a signed receipt that anyone can check offline, as the receipt section below shows."
   Source: `site/test/receipt.test.ts` verifies the saved production receipt offline with the saved keys.
+
+## Task 25 (2026-10-04): landing cut
+
+Robin asked for far less prose. The hero became a short H1 plus a two-paragraph lede, and the start steps lost their explanations. Words are visible prose, with code, terminal output and link labels left out: H1 + lede 107 to 59; start steps outside the agent prompt 206 to 78 (94 counting the inline commands); agent prompt 89 to 82. Raw `wc -w` of `#hero`: 445 to 248.
+
+Three cold `copy-grader` runs, then `tally.py`.
+
+Tally: Gate 0 CLEAR (0/3). Findings: C1, C2, both on the "See pricing" link inside the hero. Unstable: none.
+
+### Controller's rulings
+
+- **C3: accepted**, as before (Umami `?ref=` attribution).
+
+### Fixes
+
+- **C1, C2 ("See pricing" competed with the one call to action).** The free-allowance line and its /pricing link left `StartSteps.astro`, so the hero has no pricing link. Round 2 also dropped the same line from the bottom call to action (see `site-pricing-strip.md`), so the pricing strip alone carries pricing. `site/test/dist/landing.test.ts` no longer expects /pricing in `#hero` or `#start`.
+
+### The cut, before and after
+
+- H1. Before: "Your support agent has sent one customer the same email forty times. You type stop. The sends keep coming." After: "You type stop. The emails keep coming."
+- Lede. After: "Solenoid limits your AI agent's actions from outside the agent. Your email tool calls `spend` before each send. Past the limit, `spend` throws and the send never runs. Every recorded spend comes back with a signed receipt." and "By default `spend` also throws when Solenoid can't be reached. It only limits tools that call it first."
+  Source: `worker/src/core.ts:91-95` returns 402 `limit_exceeded` before writing an entry, and the SDK throws `LimitExceeded`. `worker/src/http.ts:15` defaults `on_outage` to `closed`, and `sdk/src/index.ts` `modeFor` defaults to `closed` and throws `SolenoidUnavailable`.
+- Step 1. After: "In your project's root, run this. `support-bot` names your agent, so use your own." and "It creates your account with no signup form and writes a spend key to `.env` as `SOLENOID_KEY`. Keep the admin key it prints safe: it sets every limit."
+  Source: `cli/src/commands.ts:193-210`, `cli/src/envfile.ts:5-8`. `worker/src/core.ts:144-145` requires the admin key for `put`.
+- Step 3 and the stop. After: "Run the limits it suggests, such as `npx @solenoid.systems/cli limit support-bot emails=3 --per child`, which gives each customer three emails." and "Once your tools call `spend`, `npx @solenoid.systems/cli limit support-bot emails=0` stops every email from the next call on. Step 3's command resumes them."
+  Source: limits are keyed by `(scope, unit)` (`worker/src/core.ts:33`) and upserted (`core.ts:163`), so each command replaces the other.
+- Agent prompt: the refund sentence merged into the email one, and the catch instruction now leads ("Don't catch spend's error around the send or the refund: let it stop the action."). Every instruction is kept.
+- Cut: the scope and child-scope definitions, the "until a limit exists" note, and the Free plan's past-100,000 behaviour (on /pricing and /docs).
+
+### Truth review
+
+`task-25-truth.md` checked every hero claim against `worker/src`, `sdk/src` and `cli/src` and found all of them true. The re-review after round 1 (`task-25-truth-r1.md`) found fix 1 ADDRESSED and the test change sound.
