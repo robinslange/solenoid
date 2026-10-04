@@ -58,9 +58,10 @@ export async function billingWebhook(req: Request, env: BillingEnv, tenantFor: T
       const stub = tenantFor(tenant)
       const b = await stub.billing(INTERNAL)
       if (b.ok && b.value.plan === 'pro' && b.value.subscription === o.id) {
-        await reportUsage(stub, stripe, Number.isFinite(o.ended_at) ? Math.min(Date.now(), o.ended_at * 1000 - 1000) : Date.now())
-        await stub.billingEnd(o.id)
+        await reportUsage(stub, stripe, Number.isFinite(o.ended_at) ? Math.min(Date.now(), o.ended_at * 1000 - 1000) : Date.now()).catch((e) =>
+          console.error(`tenant ${tenant}: the final usage report for subscription ${o.id} failed, so its last unreported spends go unbilled`, e))
       }
+      await stub.billingEnd(o.id)
     }
   }
   return json(200, { received: true })

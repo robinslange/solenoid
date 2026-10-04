@@ -46,6 +46,7 @@ export function stripeClient(cfg: BillingConfig, f: typeof fetch = fetch): Strip
         success_url: RETURN_URL,
         cancel_url: RETURN_URL,
         expires_at: String(Math.floor(nowMs / 1000) + CHECKOUT_TTL_S),
+        'payment_method_types[0]': 'card',
         ...(customer ? { customer } : {}),
       })
       return { id: s.id, url: s.url, expires: s.expires_at * 1000 }

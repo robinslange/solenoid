@@ -125,6 +125,7 @@ describe('POST /billing/checkout', () => {
         client_reference_id: tenant, 'subscription_data[metadata][tenant]': tenant,
         success_url: 'https://solenoid.systems/pricing', cancel_url: 'https://solenoid.systems/pricing',
         expires_at: expect.stringMatching(/^\d{10}$/),
+        'payment_method_types[0]': 'card',
       },
     }])
     near(Number(calls[0].form.expires_at) * 1000, Date.now() + HOUR)
@@ -397,22 +398,34 @@ describe('POST /billing/stripe', () => {
     expect(stamp).toBeLessThan(before + 60)
   })
 
-  it('answers 500 and keeps the tenant Pro when the final report fails, then reports the same range on the retry', async () => {
+  it('logs a failed final report naming the tenant and subscription, and still returns the tenant to free', async () => {
     const { tenant, stub } = await account()
     await webhook(completed(tenant))
     await spend(stub, 'a', { x: u(1) })
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     stripeDown = true
-    expect((await webhook(deleted(tenant))).status).toBe(500)
-    expect(await meta(stub, 'plan')).toBe('pro')
-    await spend(stub, 'a', { x: u(1) })
+    expect((await webhook(deleted(tenant))).status).toBe(200)
+    expect(meterCalls()).toHaveLength(1)
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining(`tenant ${tenant}`), expect.objectContaining({ message: 'Stripe answered 500 to POST /billing/meter_events' }))
+    expect(logged.mock.calls[0][0]).toContain('sub_1')
+    expect(logged.mock.calls.flat().map((a) => (a instanceof Error ? a.message : String(a))).join(' ')).not.toMatch(/rk_test_vitest|whsec_vitest/)
+    expect(await meta(stub, 'plan')).toBe('free')
+    expect(await meta(stub, 'next_meter')).toBeUndefined()
     stripeDown = false
     expect((await webhook(deleted(tenant))).status).toBe(200)
-    const [failed, retried] = meterCalls()
-    expect(retried.form.identifier).toBe(failed.form.identifier)
-    expect([failed.key, retried.key]).toEqual([failed.form.identifier, failed.form.identifier])
-    expect([failed.form['payload[value]'], retried.form['payload[value]']]).toEqual(['1', '1'])
+    expect(meterCalls()).toHaveLength(1)
+  })
+
+  it('never makes Pro a subscription whose deletion arrived before its completion', async () => {
+    const { tenant, stub } = await account()
+    expect((await webhook(deleted(tenant))).status).toBe(200)
+    expect((await webhook(completed(tenant))).status).toBe(200)
     expect(await meta(stub, 'plan')).toBe('free')
+    expect(await meta(stub, 'stripe_subscription')).toBeUndefined()
+    await settled()
+    expect([meterCalls(), mails]).toEqual([[], []])
+    expect((await webhook(completed(tenant, 'sub_2'))).status).toBe(200)
+    expect(await meta(stub, 'plan')).toBe('pro')
   })
 
   it('stamps the final report now when the deletion carries no ended_at', async () => {
@@ -447,6 +460,20 @@ describe('the ledger billing calls', () => {
     expect(await stub.billingStart('cus_1', 'sub_1', 'cs_1')).toEqual({ ok: true, value: { started: true, duplicate: false } })
     expect(await stub.billingStart('cus_1', 'sub_1', 'cs_1')).toEqual({ ok: true, value: { started: false, duplicate: false } })
     expect(await stub.billingStart('cus_1', 'sub_2', 'cs_2')).toEqual({ ok: true, value: { started: false, duplicate: true } })
+  })
+
+  it('remember an ended subscription so a later start for it does nothing, and only on a tenant that exists', async () => {
+    const empty = env.TENANT.get(env.TENANT.idFromName('yyyyyyyyyyyy'))
+    expect(await empty.billingEnd('sub_1')).toEqual({ ok: true, value: { ended: false } })
+    expect(await meta(empty, 'ended:sub_1')).toBeUndefined()
+    const { stub } = await account()
+    expect(await stub.billingEnd('sub_1')).toEqual({ ok: true, value: { ended: false } })
+    expect(await meta(stub, 'ended:sub_1')).toBe('1')
+    expect(await stub.billingStart('cus_1', 'sub_1', 'cs_1')).toEqual({ ok: true, value: { started: false, duplicate: false } })
+    expect(await meta(stub, 'plan')).toBe('free')
+    expect(await stub.billingStart('cus_1', 'sub_2', 'cs_2')).toEqual({ ok: true, value: { started: true, duplicate: false } })
+    expect(await stub.billingEnd('sub_2')).toEqual({ ok: true, value: { ended: true } })
+    expect(await meta(stub, 'ended:sub_2')).toBe('1')
   })
 
   it('end only the current subscription of a Pro tenant, dropping its report in flight', async () => {
