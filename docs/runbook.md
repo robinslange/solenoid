@@ -100,3 +100,22 @@ done
 ```
 
 Until all five are set, `POST /billing/checkout` and `POST /billing/stripe` answer `503 billing_unavailable`, and `solenoid upgrade` says billing is not open yet.
+
+## Billing operations
+
+One dashboard setting is required. In Billing, Revenue recovery, set the subscription status after all retries fail to "Cancel the subscription". Pro ends only on `customer.subscription.deleted`, so with any other setting a tenant whose card stops working keeps Pro with no cap.
+
+A duplicate-subscription notice to security@solenoid.systems means a tenant paid for a second subscription while already on Pro. The webhook has already cancelled that subscription. Find the payment by the subscription ID in the notice and refund it by hand in the dashboard.
+
+If a webhook delivery failed, open Developers, Webhooks, the `api.solenoid.systems/billing/stripe` endpoint, find the event and resend it. Every handler is safe to run twice.
+
+After the first live payment, check that its delivery in Developers, Webhooks shows 200.
+
+## Canary
+
+The canary spends once against production and verifies the receipt. It runs in two regions, each every 30 minutes.
+
+1. GitHub Actions runs `.github/workflows/canary.yml` with the repository secret `SOLENOID_CANARY_KEY`. The job fails when the secret is missing, and a failure shows as a failed workflow run. GitHub disables scheduled workflows on public repositories after 60 days without commits, so re-enable it in the Actions tab after a quiet spell.
+2. A second host in Auckland runs `node e2e/canary.ts` from cron in a `node:24` container. Its env file holds `SOLENOID_CANARY_KEY`, `CANARY_REGION`, `CANARY_ALERT_RESEND_KEY` and `CANARY_ALERT_TO`, and is readable only by its owner. A failure here mails security@solenoid.systems.
+
+The Auckland alert uses the API Worker's send-only `RESEND_API_KEY` as `CANARY_ALERT_RESEND_KEY`. When you rotate that key, update the Auckland env file too, or the canary's alerts stop.
