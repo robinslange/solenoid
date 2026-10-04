@@ -1,0 +1,56 @@
+---
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import Layout from '@/layouts/Layout.astro'
+
+type Cell = string | { text: string; links: [string, string][] }
+const src = (text: string, ...links: [string, string][]): Cell => ({ text, links })
+
+const PRIVACY_ACT = 'https://www.legislation.govt.nz/act/public/2020/0031/latest/LMS23223.html'
+const ACCESS_DEADLINE = 'https://www.legislation.govt.nz/act/public/2020/0031/latest/LMS153150.html'
+const CORRECTION_DEADLINE = 'https://www.legislation.govt.nz/act/public/2020/0031/latest/LMS134243.html'
+const DO_LOCATION = 'https://developers.cloudflare.com/durable-objects/reference/data-location/'
+const WORKERS_LOGS = 'https://developers.cloudflare.com/workers/observability/logs/workers-logs/'
+const UMAMI_COOKIES = 'https://umami.is/docs/faq'
+const UMAMI_DNT = 'https://umami.is/docs/tracker-configuration'
+const CLOUDFLARE_PRIVACY = 'https://www.cloudflare.com/privacypolicy/'
+const STRIPE_PRIVACY = 'https://stripe.com/privacy'
+const RESEND_PRIVACY = 'https://resend.com/legal/privacy-policy'
+
+const ROWS: [Cell, Cell, Cell, Cell][] = [
+  ['Your account ID and plan', "Your account's Durable Object", 'For the life of the account. Keys are never stored: they are derived when needed.', "To run your account and apply your plan's allowance"],
+  ['Ledger entries: scopes, units, amounts, timestamps, idempotency keys and signatures', "Your account's Durable Object", 'For the life of the account. Nothing deletes them automatically yet.', 'To enforce your limits and give you signed receipts'],
+  ['A salted hash of your network address for each signup and account recovery', "Solenoid's own ledger, in the ops account's Durable Object", 'Indefinitely. Rows written before 11 pm UTC on 30 September 2026 hold an unsalted hash.', 'To limit how many signups and recoveries come from one network'],
+  ['Your recovery email', "Your account's Durable Object", 'Until you replace it. Replacing it also emails the previous address.', 'So you can get your admin key back by email'],
+  ['The 6-digit code emailed when you attach or recover a recovery email: the address, the time and a keyed hash of the code, and a record of each send and each failed attempt', "Your account's Durable Object", 'A code stops working 15 minutes after it is sent. A scheduled job deletes each code and each record within a day of writing it.', 'To confirm you control the address, and to limit sends and guesses'],
+  ['Code, confirmation and change-notice emails, with the address each goes to', 'Resend, which sends them', src("Resend's own retention", ["Resend's privacy policy", RESEND_PRIVACY]), 'To deliver them'],
+  ['Request logs, which can include your IP address and request headers, and logged error text', src('Cloudflare Workers Logs on the API', ['Workers Logs docs', WORKERS_LOGS]), '7 days, on the Workers Paid plan', 'To find and fix errors and abuse'],
+  ['Page visits on this site: the URL with its query string (so a ?ref= tag), the referrer, your browser, device and country', src("Umami, a privacy-first analytics tool omit hosts itself. It uses no cookies, and this site's script tells it to honour Do Not Track.", ['Umami on cookies', UMAMI_COOKIES], ['Umami on Do Not Track', UMAMI_DNT]), 'Until omit deletes them', 'To count visits and see which links bring people here'],
+  ['Billing name, email, card and address; your account ID, as the Checkout client_reference_id and on the subscription', 'Stripe', src("Stripe's own retention", ["Stripe's privacy policy", STRIPE_PRIVACY]), 'To take payment for Pro and match it to your account'],
+  ['Your Stripe customer and subscription IDs; the ID, link and expiry of your latest Checkout page; and the ID of any second subscription found while you were already on Pro', "Your account's Durable Object", 'For the life of the account. The Checkout page entry is replaced by the next one.', 'To manage your plan, report usage to Stripe, reuse an open Checkout page and catch a second subscription'],
+  ['If a second subscription is found while you are on Pro: your account ID, its subscription ID and its Checkout page ID', 'An email to security@solenoid.systems, sent through Resend', "Resend's own retention, and in that mailbox until deleted by hand", 'So a duplicate payment can be refunded by hand'],
+  ['Email you send to privacy@solenoid.systems or security@solenoid.systems', "Solenoid's mailbox", 'Until deleted by hand', 'To answer you'],
+]
+---
+<Layout title="Solenoid privacy: what is stored, where, and for how long" description="Solenoid puts limits on the actions AI agents take. This is everything its API and website store or log about you, where, for how long and why, and how to ask for access, correction or deletion.">
+  <Header pathname="/privacy" />
+  <main id="privacy" class="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-20">
+    <h1 class="font-sans font-black text-4xl">What Solenoid stores about you</h1>
+    <p class="mt-5 text-zinc-300">This is everything the Solenoid API and this website store or log about you, taken from the code. The agency responsible is Robin Lange, trading as omit, in New Zealand.</p>
+    <div class="mt-8 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="border-b border-[#333] text-zinc-500"><th class="py-2 pr-4">What</th><th class="py-2 pr-4">Where</th><th class="py-2 pr-4">How long</th><th class="py-2">Why</th></tr></thead>
+        <tbody>{ROWS.map((row) => (
+          <tr class="border-b border-[#222] align-top">{row.map((cell, i) => (
+            <td class:list={['py-3', i < 3 && 'pr-4', i > 0 && 'text-zinc-400']}>{typeof cell === 'string' ? cell : (
+              <Fragment>{cell.text} ({cell.links.map(([label, href], j) => <Fragment>{j > 0 && ', '}<a class="underline hover:text-accent" href={href}>{label}</a></Fragment>)})</Fragment>
+            )}</td>
+          ))}</tr>
+        ))}</tbody>
+      </table>
+    </div>
+    <p class="mt-8 text-zinc-300">Your account's Durable Object is placed in one Cloudflare data center when it is created, and it does not move after that (<a class="underline hover:text-accent" href={DO_LOCATION}>Cloudflare's data location docs</a>). That can be outside New Zealand. Cloudflare, Stripe and Resend process data outside New Zealand under their own terms: see the privacy policies of <a class="underline hover:text-accent" href={CLOUDFLARE_PRIVACY}>Cloudflare</a>, <a class="underline hover:text-accent" href={STRIPE_PRIVACY}>Stripe</a> and <a class="underline hover:text-accent" href={RESEND_PRIVACY}>Resend</a>.</p>
+    <p class="mt-4 text-zinc-300">To see, correct or ask us to delete what Solenoid holds about you under the NZ <a class="underline hover:text-accent" href={PRIVACY_ACT}>Privacy Act 2020</a>, email privacy@solenoid.systems. We answer within 20 working days (<a class="underline hover:text-accent" href={ACCESS_DEADLINE}>section 44</a>, <a class="underline hover:text-accent" href={CORRECTION_DEADLINE}>section 63</a>).</p>
+  </main>
+  <Footer />
+</Layout>

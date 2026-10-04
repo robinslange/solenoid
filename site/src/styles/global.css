@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+pre.astro-code { overflow-x: auto; max-width: 100%; }
+.prose table { display: block; overflow-x: auto; }
+.prose { overflow-wrap: break-word; }

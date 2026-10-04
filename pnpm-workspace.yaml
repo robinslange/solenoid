@@ -1,0 +1,6 @@
+packages: [worker, testing, sdk, cli, mcp, e2e, site]
+allowBuilds:
+  esbuild: true
+  workerd: true
+  sharp: true
+  lefthook: true

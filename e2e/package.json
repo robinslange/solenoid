@@ -1,0 +1,20 @@
+{
+  "name": "@solenoid/e2e",
+  "private": true,
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --filter @solenoid.systems/cli run build && vitest run",
+    "typecheck": "tsc --noEmit",
+    "record-race": "pnpm --filter @solenoid.systems/cli run build && node record-race.ts",
+    "canary": "node canary.ts"
+  },
+  "devDependencies": {
+    "@solenoid.systems/cli": "workspace:*",
+    "@solenoid.systems/sdk": "workspace:*",
+    "@solenoid/worker": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,1 @@
+{ "extends": "../tsconfig.base.json", "compilerOptions": { "lib": ["ES2022", "DOM"], "types": ["node"], "noEmit": true, "allowImportingTsExtensions": true }, "include": ["test", "global-setup.ts", "vitest.config.ts", "wrangler-dev.ts", "record-race.ts", "canary.ts"] }

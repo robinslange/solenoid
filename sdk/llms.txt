@@ -1,0 +1,188 @@
+# @solenoid.systems/sdk
+
+> Limits on what an agent does, for tools that call spend(scope, { unit: n }) before they act. While Solenoid is reachable, a spend that would take a unit past its limit is refused: spend throws LimitExceeded and the action never runs. Every spend Solenoid records returns a signed receipt. Two gaps (see Known bounds): during an outage, a limit whose outage mode is open lets the action through, spend returns null and nothing is recorded; and model calls can end above a tokens or usd limit, because the input estimate can be low and Anthropic cache writes are undercounted. The first 100,000 spends each UTC calendar month are free; past that, the free plan refuses every spend until the month turns, and Pro ($29 USD a month with 2M spends included, then $10 USD per extra million; see Billing) keeps them going. Only recorded spends count; refused spends, replays and attempts that never reach Solenoid don't.
+
+This page is written for you, the coding agent integrating Solenoid. "The developer" is the human who owns the project.
+
+## Setup
+- Install: npm i @solenoid.systems/sdk. For a tool with no install step, the developer runs npm pack @solenoid.systems/sdk (https://docs.npmjs.com/cli/commands/npm-pack), which downloads the published package as a .tgz into the current directory. List the tarball with tar tzf <file>.tgz and extract it with tar xzf <file>.tgz. Then copy the dist/ folder the listing shows into the tool as vendor/solenoid/. You then import solenoid.mjs (no imports of its own) and node.mjs (Node built-ins only) by a path relative to the importing file, e.g. './vendor/solenoid/solenoid.mjs' from the tool's root. The SDK needs Node 20 or later.
+- Account: the developer runs npx @solenoid.systems/cli init <scope> in their own terminal. <scope> is a name they choose. The spend key it writes covers that scope and every scope under it, so it must be at or above every scope your code spends at (for the example below, "research" or a parent of it). init has no signup form. It prints the admin key once, saves it to ~/.config/solenoid/credentials (mode 0600), and appends SOLENOID_KEY=<spend key> to .env in the directory init runs in. If that .env already has a SOLENOID_KEY, init leaves the file as it is and prints the new spend key for the developer to place. If the credentials file is lost, a verified recovery email gets the same admin key back (see Recovery); without one, running init again creates a new account. Tell the developer to run you as a different OS user from the one that holds the credentials file, or on a machine without the admin key, so you can never read the admin key.
+- You only ever receive the spend key. A spend key cannot change limits. If you see an admin key (sk.admin.*), do not use, copy or store it.
+- Env: SOLENOID_KEY (required), SOLENOID_API (optional, default https://api.solenoid.systems). The SDK does not read .env. node --env-file=.env loads it on Node 20.6.0 or later (https://nodejs.org/api/cli.html#--env-filefile); otherwise use the project's own loader.
+- Client: solenoid({ key?, api?, timeoutMs? = 2000, store?, fetch?, prices?, onWarn? }). Throws TypeError with no key, or when api (or SOLENOID_API) is not an http or https URL with no user, password, query or fragment and on a port that fetch allows (fetch refuses about 80 ports, such as 6000, 5060 and 10080: https://fetch.spec.whatwg.org/#bad-port). signup(api) rejects with the same TypeError.
+
+## Model
+- Scope: path like "support/c-8f2a". Up to 8 segments, each 1 to 64 chars of a-z 0-9 . _ -. Anything else throws TypeError, so lowercase IDs first.
+- Unit: a name the code chooses, matching ^[a-z][a-z0-9_]{0,31}$. "spends" is reserved. Amounts are positive, kept to 6 decimals.
+- Limit: caps one unit at one scope, and applies to every spend at that scope or below. A spend checks every limit on its scope and each ancestor in one transaction; if any would go over, nothing is counted.
+- Spend under the limit. A spend is capped only by limits at its own scope or an ancestor. A spend under no limit is recorded and never refused. So integrate at a scope under the limit the developer set. To check, pass the exact scope you will spend at, e.g. research/s-1. You call sol.get('research/s-1') with the spend key; the developer can run npx @solenoid.systems/cli ls research/s-1, which uses the admin key from the credentials file. limits lists every limit that caps a spend at that scope, including ones set on its ancestors, each with a number in used. An entry with used: null is a per-child limit the scope sets for its own children and doesn't cap the scope itself. ls prints the same list, shows such an entry as "tracked separately per child", and prints "(no limits)" when it is empty. If no entry has a number in used, nothing caps it: don't ship that integration. Ask the developer to set a limit, e.g. npx @solenoid.systems/cli limit research fetches=10 --per child --on-outage open.
+- Spend first, then act. A failed action is not refunded. While Solenoid is reachable, concurrent spends cannot take a unit past its limit. Two cases can: an open limit during an outage, and model calls, whose actual usage is recorded after the call (see Model calls).
+- Idempotency: the SDK keys every spend and retries once with the same key after a network error or 5xx, so a retried spend counts once. spend(scope, amounts, { idempotencyKey }) keys your own retries; a repeat returns the first receipt with replay: true.
+- Billing: on the free plan, one spend is one of the 100,000 a month. On Pro, it is one of the 2M a month included in the $29, and Pro's 2M do not add to the free 100,000. One llm call is one spend (see Model calls).
+- Pro: tell the developer to run npx @solenoid.systems/cli upgrade (solenoid upgrade if the CLI is installed) on the machine that holds the admin key. It opens Stripe Checkout in the browser and prints the link, in case no browser opens. Once the payment goes through, the account moves to Pro, and the 100,000 cap no longer applies. Never run it yourself.
+
+## Client methods
+- spend(scope, amounts, { idempotencyKey? }): Promise<Receipt | null>
+- limit(scope, body): admin key only. Body is sent as is: { <unit>: number | null, per?, on_outage?, warn_at? }. 0 refuses every spend of the unit, null removes the limit. per, on_outage and warn_at apply to every unit in the call.
+- get(scope, { before? }): limits (used, left, resets), children, entries newest first, 50 per page; next is the before value for the following page. A spend key can read its own scope and below.
+- at(scope): { scope, spend(amounts), llm(callFn, req, { price? }) }
+- run(scope, fn): runs fn with at(scope + "/run-<random id>") and returns its result.
+- verify(receipt): Promise<boolean>. Fetches keys once from <api>/.well-known/solenoid.json. When the receipt's kid is missing from them, fetches again with a fresh ?t= query string, so no HTTP cache answers; at most once every 5 seconds per client, shared across kids, so an unknown kid met inside that interval gets false without a fetch. If the fetch fails, keeps the old keys and returns false for the unknown kid.
+- verifyChain(entries): Promise<boolean>. Entries must be consecutive and ascending. Only the root scope's pages are consecutive, and reading get("") needs the admin key, so this runs in the developer's tooling. Each page holds 50 entries, newest first: to check more, pass each page's next as before, concatenate the pages, then reverse.
+- Offline: verifyChain([receipt], keys) with keys from a saved copy of .well-known/solenoid.json. It reads only own keys, so an unknown kid gives false. verifyReceipt(receipt, jwk) takes one jwk; look it up with Object.hasOwn(keys, receipt.kid) first, because keys[receipt.kid] for a kid such as constructor is not a key and makes it throw.
+- deriveKey(scope), rotate(scope), rotateAdmin(): admin key only.
+- sendEmailCode(email), verifyEmail(email, code, { rotate? }): admin key only. See Recovery.
+- checkout(): admin key only; solenoid upgrade calls it. Returns { url }, the Stripe Checkout page for Pro. On Pro it throws SolenoidError 409 already_pro, with detail.portal_url, the Stripe billing portal. While billing is not open yet, it throws SolenoidError 503 billing_unavailable. Not retried: a network failure, or any other 5xx, throws Outage.
+
+## per values (UTC, calendar-aligned)
+- omitted: lifetime. "hour", "day", "week" (from Monday), "month": that window.
+- "child": each direct child scope gets its own lifetime copy. "child-day": each child's copy resets daily.
+- A child limit on "support" counts "support/<child>" and everything under it against that child's copy. A spend at "support" itself is not counted.
+- on_outage: "closed" (default) or "open". warn_at: fraction in (0, 1]; once usage reaches warn_at times the limit, onWarn gets [{ scope, unit, used, limit }].
+- At most once: { refunds: 1, per: "child" } on "support/refunds", then spend at "support/refunds/<orderId>". The second spend for that order throws.
+- CLI (the developer runs it): npx @solenoid.systems/cli limit <scope> <unit>=<n|off> [--per p] [--on-outage m] [--warn-at f]. It reads the admin key from ~/.config/solenoid/credentials. off removes the limit; 0 refuses every spend. rotate <scope> --yes revokes that scope's spend keys; npx @solenoid.systems/cli key <scope> (or deriveKey(scope) with the admin key) then prints the new one.
+
+## Errors
+- LimitExceeded (extends SolenoidError, status 402, code "limit_exceeded"): .scope holds the limit, .unit, .resets (ISO or null). detail has limit, used, requested.
+- SolenoidUnavailable (extends Error directly; instanceof SolenoidError is false): Solenoid couldn't be reached after one retry, and the outage mode in the local cache was closed. The SDK reads the mode from the nearest scope with a cached entry; with nothing cached it is closed. So on a new machine, or in a new process with the default in-memory cache, even a limit set to open behaves as closed until one successful spend has cached its mode. .scope, .cause.
+- null from spend: unreachable, and the outage mode that applies is open. The action may go ahead; nothing is recorded and there is no receipt.
+- SolenoidError: .status, .code, .detail. 401 invalid_key (also a rotated key). 403 out_of_scope, admin_required. 409 idempotency_conflict, already_pro. 503 billing_unavailable. 400 invalid_limit, invalid_unit, invalid_amount. Status 0 unknown_price, thrown by the SDK before any request.
+- On the free plan, past 100,000 spends in a month: LimitExceeded with unit "spends" at scope "". Check e.unit before mapping LimitExceeded to a budget error of your own.
+
+## Outage cache
+- Each successful spend tells the SDK each limit's outage mode, and the SDK caches it. During an outage, the mode cached for the nearest scope decides; with nothing cached, the mode is closed.
+- The default cache is in memory, so it lasts one process. A new process has nothing cached until its first successful spend. fileStore() from @solenoid.systems/sdk/node keeps the cache in ~/.cache/solenoid/outage.json, shared by every process on the machine that uses it (fileStore(dir) to move it). Use it for CLIs and one-process-per-task tools. The solenoid CLI uses fileStore() with the default directory, so it shares that cache with SDK clients on the default when they run as the same OS user. A write that fails does not fail the spend; fileStore emits a Node warning naming the file. A tool may pass its own data directory to fileStore(dir) to keep the outage cache with the rest of its state.
+- Concurrent writers to the file store: last write wins. A lost entry falls back to the nearest cached ancestor, or closed.
+- Custom store: any { get(scope), set(scope, mode) }, sync or async. set must not throw or reject: the SDK awaits it after Solenoid has recorded the spend, so an error there surfaces as a thrown error for a recorded spend, and a retry spends again.
+
+## Model calls
+- The developer should keep their provider or gateway cap for model spend, because llm can end above its limit (see Known bounds). at(scope).llm adds a per-scope tokens or usd limit.
+- Hold and settle: before the call, llm spends the worst case (the hold). After it, llm replaces the hold with the actual usage (the settle). The settle is free, so one llm call is one spend. Actual usage can exceed the hold's estimate of the input, which is how a settle can end above a limit.
+- With a tokens or usd limit on the scope, llm:
+  1. Reads what is left for this scope: cached from the last response for this scope, or one GET when nothing is cached for it, a cached figure is past its reset time, the model has no price, or the cached figures would refuse the call. A limit added or lowered since that response still applies, because Solenoid checks every limit when it takes the hold.
+  2. Estimates input tokens as the character length of the request's JSON, minus model and the output-cap fields, divided by 4, times 1.2. Throws LimitExceeded before the provider call if the input can't fit.
+  3. Rewrites the request's output cap: max_completion_tokens if the request has it, else max_tokens, never both. Unset means the model's max_output, or 4096.
+  4. Holds the worst case, then calls the provider.
+  5. Settles actual usage. Provider throws: settles to zero. Settle fails: the response is still returned and the hold stands.
+- Without one: the request is sent unchanged and actual usage is spent afterwards.
+- Field names: max_completion_tokens and max_tokens (https://platform.openai.com/docs/api-reference/chat/create), max_tokens (https://platform.claude.com/docs/en/api/messages). For OpenAI, set max_completion_tokens in the request: OpenAI's reference marks max_tokens deprecated and not compatible with its reasoning models, and the SDK writes its cap into whichever field the request has.
+- Usage read: usage.prompt_tokens and usage.completion_tokens (https://platform.openai.com/docs/api-reference/chat/object); usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens, and usage.output_tokens (https://platform.claude.com/docs/en/api/messages).
+- Bundled prices, taken 24 Sep 2026 from https://platform.openai.com/docs/models/gpt-4.1, https://platform.openai.com/docs/models/gpt-4.1-mini, https://platform.claude.com/docs/en/about-claude/pricing and https://platform.claude.com/docs/en/about-claude/models/overview. USD per token in, per token out, and max_output: gpt-4.1 0.000002, 0.000008, 32768. gpt-4.1-mini 0.0000004, 0.0000016, 32768. claude-sonnet-5 0.000002, 0.00001, 128000. claude-haiku-4-5 0.000001, 0.000005, 64000. Other models under a usd limit throw unknown_price unless given { price: { input, output, max_output? } } per call or solenoid({ prices }).
+- TypeScript: annotate the callback, e.g. (req: OpenAI.ChatCompletionCreateParamsNonStreaming) => openai.chat.completions.create(req). Type defined in https://github.com/openai/openai-node/blob/v7.23.0/src/resources/chat/completions/completions.ts (openai 7.23.0, https://www.npmjs.com/package/openai/v/7.23.0).
+
+## Recovery
+Recovery is the developer's job. Attaching an address needs the admin key; recovering needs only the account ID and the address. You need this section only to point the developer here, or to test code that calls these functions.
+- Attach: admin.sendEmailCode(email) mails a code; admin.verifyEmail(email, code) returns { tenant, email } and mails a confirmation naming the account ID. admin.verifyEmail(email, code, { rotate: true }) also replaces the admin key in the same step and returns { tenant, email, admin_key }; store that admin_key first; if it is lost, only recovery by email gets it back. Every earlier admin and spend key stops working, the calling client's included. If it throws Outage, it may have gone through. A minute later, call get('') on the same client. If it works, nothing changed, but the code may be used up: send a new one and verify again. If it fails with invalid_key, the key was replaced, by this call or by someone else first: call requestRecovery(tenant, email). If a code arrives, recover(tenant, email, code) returns the current admin key. If none arrives within a few minutes (and the address had fewer than 5 codes this hour), email isn't the recovery email, and a new account (CLI init --force, which overwrites the saved admin key) is what is left. If get('') throws Outage again, wait and call it again. The CLI does the same in two runs: npx @solenoid.systems/cli email <address> mails the code, then npx @solenoid.systems/cli email <address> <code> [--rotate] attaches the address. Addresses are trimmed and lowercased. One recovery email per account; a new one replaces it, and Solenoid mails the old address (no notice goes out for the first address).
+- Recover: requestRecovery(tenant, email, { api?, fetch? }) and recover(tenant, email, code, { api?, fetch?, rotate? }), both imported from @solenoid.systems/sdk. No key needed. They use api, then SOLENOID_API, then https://api.solenoid.systems. tenant is the third field of any key (sk.spend.<tenant>.…). recover returns { tenant, admin_key }: the current admin key, so deployed spend keys keep working. recover(tenant, email, code, { rotate: true }) returns a new admin key instead, and every earlier admin and spend key stops working.
+- CLI: npx @solenoid.systems/cli recover <email>, then recover <email> <code> [--rotate]. It finds the account ID from --tenant, then SOLENOID_KEY in the environment, then SOLENOID_KEY in ./.env, then the saved credentials. It sends to SOLENOID_API if set, and to https://api.solenoid.systems otherwise. It doesn't use the API saved in the credentials file. To recover an account on another host, set SOLENOID_API. The second run prints the admin key and saves it, with that API, to the credentials file; if the file holds another account's admin key it refuses and changes nothing, unless given --force.
+- requestRecovery resolves the same way whether or not the address is the account's recovery email; a code is mailed only if it is. It also resolves when the address has had too many codes. It throws rate_limited (429) only past 20 recovery requests (requestRecovery and recover together) in a UTC day from one IPv4 address or IPv6 /64, on the hosted API.
+- Codes, kept apart by kind (attach or recovery): 6 digits, work once, within 15 minutes. At most 5 codes per address an hour, attach and recovery together, counting requestRecovery calls for an address that isn't the recovery email. At most 10 attach codes per account a day. sendEmailCode throws rate_limited (429) past either; requestRecovery never does for these. Up to 3 codes of each kind per address work at once. A wrong code counts once per live code of that kind for that address, and once when none is live; a check that could take the count past 5 in an hour or 10 in a day fails with invalid_code, even for the right code, until the failures age out. With 3 codes live, one wrong code can block the next check.
+- Leaked admin key, or an unexpected "recovery email was changed" email: tell the developer to run these two, while the admin key still works, and never run them yourself: npx @solenoid.systems/cli email <their address>, then npx @solenoid.systems/cli email <their address> <code> --rotate with the code it mails. The second sets their address and replaces the admin key in one step, so whoever changed the address cannot change it back; it prints and saves the new admin key, and every old admin and spend key stops working. Then redeploy each spend key from npx @solenoid.systems/cli key <scope>. Rotating the admin key on its own is not enough, because whoever holds the recovery email can recover even a rotated admin key. If the admin key already fails with invalid_key, the old address can no longer recover the account; a new account (init --force) is what is left.
+- Known risk: someone who knows the account ID and the recovery email can block recovery for a while, by entering wrong codes (locks checks for up to an hour, or a day) or by requesting codes over and over (uses up the 5 an hour and pushes the owner's code out of the 3 live). Anyone on the owner's IPv4 address, a shared NAT included, or in the same IPv6 /64 needs neither: 20 junk recovery requests use up that network's 20 for the UTC day, and requestRecovery and recover then throw rate_limited (429) until the day rolls over. Recovering from another network works. None of these gives them a key.
+- Errors: 400 invalid_request (an account ID that isn't 12 chars of a-z and 2-7), 400 invalid_email, 400 invalid_code, 401 invalid_key (a rotated admin key), 403 admin_required (a spend key), 429 rate_limited, 502 email_failed (the email could not be sent and nothing was attached; call sendEmailCode again). Every one of these throws SolenoidError, email_failed included. The SDK never retries a recovery or email call: a network failure, or any other 5xx, throws Outage.
+
+## Testing
+- testServer() from @solenoid.systems/testing (npm i -D @solenoid.systems/testing; FSL-1.1-ALv2, since it bundles the hosted API's own request handler and ledger code) runs Solenoid inside the test process, over in-memory node:sqlite. No request leaves the process. It needs Node 22.5 or later, and 22.5 to 22.12 and 23.0 to 23.3 also need --experimental-sqlite (https://nodejs.org/api/sqlite.html). Older Node gets an error that says so.
+- const server = await testServer() returns { fetch, api, signup, setNow, outage, outbox, mailDown }. Make every client with solenoid({ key, api: server.api, fetch: server.fetch }).
+- signup(): { tenant, admin_key }, with no rate limit. Make admin = solenoid({ key: admin_key, api: server.api, fetch: server.fetch }), then get a spend key with admin.deriveKey(scope).
+- setNow(ms): sets the ledger clock, in ms since the Unix epoch. It stays there until the next setNow. Before the first setNow, the clock reads the wall time. Use it to move into the next window.
+- outage(on): while on is true, fetch rejects with TypeError, as a network failure does. spend then returns null if the client has cached an open mode for the scope or a parent, and throws SolenoidUnavailable otherwise. A client caches the mode when it makes one successful spend under a limit set with on_outage: 'open'.
+- outbox(): resolves to every email the server has sent, oldest first, as { to, subject, text }, after waiting for sends still in flight (the recovery code goes out after requestRecovery resolves). Read codes from text with /\b\d{6}\b/.
+- mailDown(on): while on is true, every email fails to send. sendEmailCode then throws email_failed; a recovery code is dropped and requestRecovery still resolves.
+- Each server makes its own signing key. verify and verifyChain check against that server's /.well-known/solenoid.json. Servers share no tenants and no keys.
+- Code under test that makes its own client with solenoid(): route it with MSW 2 (https://mswjs.io/), importing http from 'msw' and setupServer from 'msw/node': setupServer(http.all(`${server.api}/*`, ({ request }) => server.fetch(request))).listen(). solenoid() reads SOLENOID_API and SOLENOID_KEY, and takes the global fetch, when it is called. So call listen() and set SOLENOID_API to server.api and SOLENOID_KEY to a spend key before that code builds its client. Import a module that builds its client at load only after that.
+- Example (node:test; for vitest, import test from vitest). It runs in one test. The second admin.limit on "support" for emails replaces the per: "child" one, because a scope holds one limit per unit.
+
+```js
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { LimitExceeded, solenoid } from '@solenoid.systems/sdk'
+import { testServer } from '@solenoid.systems/testing'
+
+test('refuses the fourth email in one conversation', async () => {
+  const server = await testServer()
+  const { admin_key } = await server.signup()
+  const admin = solenoid({ key: admin_key, api: server.api, fetch: server.fetch })
+  await admin.limit('support', { emails: 3, per: 'child' })
+  const sol = solenoid({ key: await admin.deriveKey('support'), api: server.api, fetch: server.fetch })
+
+  for (let i = 0; i < 3; i++) await sol.spend('support/c-1', { emails: 1 })
+  await assert.rejects(sol.spend('support/c-1', { emails: 1 }), LimitExceeded)
+
+  server.setNow(Date.UTC(2030, 0, 1, 10, 30))
+  await admin.limit('support', { emails: 1, per: 'hour' })
+  await sol.spend('support', { emails: 1 })
+  await assert.rejects(sol.spend('support', { emails: 1 }), LimitExceeded)
+  server.setNow(Date.UTC(2030, 0, 1, 11))
+  await sol.spend('support', { emails: 1 })
+})
+```
+
+Recovery example (node:test):
+
+```js
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { recover, requestRecovery, solenoid } from '@solenoid.systems/sdk'
+import { testServer } from '@solenoid.systems/testing'
+
+const codeIn = (text) => /\b\d{6}\b/.exec(text)[0]
+
+test('gets the admin key back by email', async () => {
+  const server = await testServer()
+  const { tenant, admin_key } = await server.signup()
+  const admin = solenoid({ key: admin_key, api: server.api, fetch: server.fetch })
+  const o = { api: server.api, fetch: server.fetch }
+
+  await admin.sendEmailCode('you@example.com')
+  await admin.verifyEmail('you@example.com', codeIn((await server.outbox())[0].text))
+
+  await requestRecovery(tenant, 'someone-else@example.com', o)
+  assert.equal((await server.outbox()).length, 2)
+
+  await requestRecovery(tenant, 'you@example.com', o)
+  const code = codeIn((await server.outbox()).at(-1).text)
+  assert.equal((await recover(tenant, 'you@example.com', code, o)).admin_key, admin_key)
+})
+```
+
+The outbox holds 2 emails after verifyEmail: the attach code and the confirmation. The request for someone-else@example.com resolves and sends nothing.
+
+## Known bounds
+- The input estimate can be low; settle records the real usage afterwards, which can end above the limit.
+- The SDK does not read usage from streamed responses: a held call records its full hold, an unheld one records nothing.
+- Anthropic cache writes are counted at the base input rate, but priced at 1.25 times (5 minute) or 2 times (1 hour) that rate (https://platform.claude.com/docs/en/build-with-claude/prompt-caching). A usd limit undercounts them and can be exceeded. Cache reads cost 0.1 times the base rate on the same page; the SDK counts them at the full base rate, which overcounts and errs toward the limit.
+
+## Example: guard an existing function that fetches URLs
+This imports the vendored files, the path for a tool with no install step. With npm, import from "@solenoid.systems/sdk" and "@solenoid.systems/sdk/node". The developer sets the limit once, with the admin key: npx @solenoid.systems/cli limit research fetches=10 --per child --on-outage open. The spend key must cover "research" (init research, or a parent scope). Every spend below is at research/<session>, under that limit.
+
+```js
+import { solenoid, LimitExceeded, SolenoidUnavailable } from './vendor/solenoid/solenoid.mjs'
+import { fileStore } from './vendor/solenoid/node.mjs'
+
+const sol = process.env.SOLENOID_KEY ? solenoid({ store: fileStore() }) : null
+
+async function fetchPage(url) {
+  const res = await fetch(url)
+  return res.text()
+}
+
+export async function fetchPageBudgeted(sessionId, url) {
+  if (sol) {
+    try {
+      await sol.spend(`research/${sessionId.toLowerCase()}`, { fetches: 1 })
+    } catch (e) {
+      if (e instanceof LimitExceeded && e.unit === 'fetches') return { error: 'fetch_budget_exceeded' }
+      if (e instanceof SolenoidUnavailable) return { error: 'fetch_budget_unavailable' }
+      throw e
+    }
+  }
+  return { text: await fetchPage(url) }
+}
+```
+
+Each session gets 10 fetches. The 11th returns fetch_budget_exceeded without fetching. This is a yes/no gate. It refuses on LimitExceeded for the unit it governs (fetches) and on SolenoidUnavailable (defined under Errors), because then a closed outage mode means the fetch must not run. Any other error, including any other LimitExceeded such as the monthly spends allowance, is unexpected and is rethrown. sessionId must fit the scope grammar.
+
+During an outage, a fetch goes ahead unrecorded only if an earlier successful spend cached "research" as open. fileStore shares that cache across processes on this machine. With nothing cached, as on a new machine, spend throws SolenoidUnavailable (see Errors) and the example returns fetch_budget_unavailable without fetching.
+
+With no SOLENOID_KEY, this example deliberately runs unlimited: a missing key turns the budget off without an error. Choose that fallback knowingly, and tell the developer. To fail instead, call solenoid() unconditionally; it throws TypeError when the key is missing.

@@ -1,0 +1,13 @@
+---
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import Layout from '@/layouts/Layout.astro'
+---
+<Layout title="Solenoid: page not found" description="There is no page at this address on solenoid.systems, the site for Solenoid, which puts limits on the actions AI agents take." hasField={false}>
+  <Header pathname="/404" />
+  <main id="not-found" class="relative z-10 max-w-2xl mx-auto px-6 pt-32 pb-20">
+    <h1 class="font-sans font-black text-4xl">Nothing is at this address</h1>
+    <p class="mt-5 text-zinc-300">The docs are at <a class="underline hover:text-accent" href="/docs">/docs</a>, and the home page is at <a class="underline hover:text-accent" href="/">/</a>.</p>
+  </main>
+  <Footer />
+</Layout>

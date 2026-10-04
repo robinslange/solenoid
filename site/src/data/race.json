@@ -1,0 +1,132 @@
+{
+  "limit": 7,
+  "calls": 30,
+  "recorded": 7,
+  "refused": 23,
+  "lines": [
+    {
+      "at_ms": 38,
+      "text": "spend  1  recorded as rcp_2"
+    },
+    {
+      "at_ms": 38,
+      "text": "spend  2  recorded as rcp_3"
+    },
+    {
+      "at_ms": 38,
+      "text": "spend  5  recorded as rcp_6"
+    },
+    {
+      "at_ms": 39,
+      "text": "spend  3  recorded as rcp_4"
+    },
+    {
+      "at_ms": 39,
+      "text": "spend  4  recorded as rcp_5"
+    },
+    {
+      "at_ms": 39,
+      "text": "spend  6  recorded as rcp_7"
+    },
+    {
+      "at_ms": 39,
+      "text": "spend  7  recorded as rcp_8"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend  9  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 10  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 11  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 12  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 13  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 14  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 15  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 16  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 17  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 18  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 19  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 20  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 21  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 22  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 23  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 69,
+      "text": "spend 24  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend  8  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 25  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 26  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 27  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 28  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 29  refused: 402 limit_exceeded"
+    },
+    {
+      "at_ms": 70,
+      "text": "spend 30  refused: 402 limit_exceeded"
+    }
+  ],
+  "sources": {
+    "e2e/test/concurrency.test.ts": "b734aceb933daaebd3816a8de408c155ffba11a516bd8e1eab0905689982c651",
+    "e2e/record-race.ts": "84e9246fbfebd14072ae4cdb203a51b80cd121680dd29b73aa99a6e0402a5ba7"
+  }
+}

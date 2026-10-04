@@ -1,0 +1,31 @@
+---
+import { Code } from 'astro:components'
+import { solenoidTheme } from '@/lib/shiki-theme'
+
+interface Props { name: string; tabs: { label: string; lang: 'ts' | 'sh'; code: string }[] }
+const { name, tabs } = Astro.props
+const css = tabs
+  .map((_, i) => `#${name}-${i}:checked~.tabs-header label[for="${name}-${i}"]{color:#FF3F00;border-bottom-color:#FF3F00}#${name}-${i}:checked~.tabs-panels .${name}-panel-${i}{display:block}`)
+  .join('')
+---
+<div class="code-tabs">
+  {tabs.map((_, i) => <input type="radio" name={name} id={`${name}-${i}`} checked={i === 0} />)}
+  <div class="tabs-header">
+    {tabs.map((t, i) => <label for={`${name}-${i}`} class="tab-label">{t.label}</label>)}
+  </div>
+  <div class="tabs-panels">
+    {tabs.map((t, i) => <div class={`tab-panel ${name}-panel-${i}`}><Code code={t.code} lang={t.lang} theme={solenoidTheme} /></div>)}
+  </div>
+</div>
+<style is:inline set:html={css}></style>
+
+<style>
+  .code-tabs { margin: 1.5rem 0; }
+  .code-tabs input[type='radio'] { position: absolute; opacity: 0; pointer-events: none; }
+  .tabs-header { display: flex; gap: 0.25rem; border-bottom: 1px solid #27272a; background: #0a0a0b; }
+  .tab-label { padding: 0.75rem 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: #71717a; cursor: pointer; transition: all 0.15s ease; border-bottom: 2px solid transparent; user-select: none; }
+  .tab-label:hover { color: #a1a1aa; background: #18181b; }
+  .tab-panel { display: none; }
+  .tab-panel :global(pre) { margin: 0; border-radius: 0; border-top: none; padding: 1rem 1.25rem; overflow-x: auto; }
+  .tab-panel :global(code) { font-size: 0.8125rem; }
+</style>

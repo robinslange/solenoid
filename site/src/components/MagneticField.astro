@@ -1,0 +1,15 @@
+<canvas id="magnetic-field" class="fixed inset-0 -z-10" aria-hidden="true"></canvas>
+
+<style>
+  #magnetic-field {
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 60vh, transparent 100vh);
+    mask-image: linear-gradient(to bottom, black 0%, black 60vh, transparent 100vh);
+  }
+</style>
+
+<script>
+  import { initFieldIfNeeded } from '@/lib/pixi/magnetic-field-singleton'
+
+  const canvas = document.getElementById('magnetic-field') as HTMLCanvasElement | null
+  if (canvas) initFieldIfNeeded(canvas).catch(() => canvas.remove())
+</script>

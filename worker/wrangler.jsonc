@@ -1,0 +1,11 @@
+{
+  "name": "solenoid",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "durable_objects": { "bindings": [{ "name": "TENANT", "class_name": "TenantDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TenantDO"] }],
+  "vars": { "SIGNING_KID": "k1", "MAIL_FROM": "Solenoid <auth@solenoid.systems>" },
+  "routes": [{ "pattern": "api.solenoid.systems", "custom_domain": true }]
+}

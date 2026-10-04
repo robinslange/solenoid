@@ -1,0 +1,14 @@
+---
+interface Props { text: string }
+const { text } = Astro.props
+---
+<div class="hidden md:flex items-center justify-center h-[30vh] min-h-[220px]" aria-hidden="true">
+  <canvas id="magnetic-title" class="max-w-full" data-text={text}></canvas>
+</div>
+
+<script>
+  import { initTitleIfNeeded } from '@/lib/pixi/magnetic-field-singleton'
+
+  const canvas = document.getElementById('magnetic-title') as HTMLCanvasElement | null
+  if (canvas?.dataset.text) initTitleIfNeeded(canvas, canvas.dataset.text)
+</script>

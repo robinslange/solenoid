@@ -1,0 +1,27 @@
+name: canary
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOLENOID_CANARY_KEY: ${{ secrets.SOLENOID_CANARY_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile --filter "@solenoid/e2e..."
+      - run: pnpm --filter @solenoid.systems/sdk build
+      - run: node e2e/canary.ts
+        if: env.SOLENOID_CANARY_KEY != ''
+        env:
+          CANARY_REGION: github-us

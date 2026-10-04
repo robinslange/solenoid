@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: false
+  commands:
+    typecheck:
+      run: pnpm -r --if-present run typecheck
+    test-affected:
+      run: pnpm -r --if-present run test:changed
+    scrub:
+      run: test ! -f .scrub-patterns || node scripts/scrub-check.mjs --from .scrub-patterns

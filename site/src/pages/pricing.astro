@@ -1,0 +1,42 @@
+---
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import Layout from '@/layouts/Layout.astro'
+import { INIT, UPGRADE } from '@/lib/start'
+
+const card = 'border border-[#333] bg-[#0a0a0b] p-6'
+const cmd = 'mt-2 border border-[#333] bg-[#050505] px-4 py-3 font-mono text-sm overflow-x-auto'
+---
+<Layout title="Solenoid pricing: free for 100,000 spends a month" description="Solenoid checks each action your AI agent takes against your limits, and each check is a spend. Free for 100,000 spends each UTC calendar month. Pro is $29 USD a month with 2M, then $10 USD per extra million.">
+  <Header pathname="/pricing" />
+  <main id="pricing" class="relative z-10 max-w-3xl mx-auto px-6 pt-32 pb-20">
+    <h1 class="font-sans font-black text-4xl">Free for your first 100,000 spends each month</h1>
+    <p class="mt-5 text-zinc-300">Solenoid puts limits on what your AI agent does. Before each action, such as sending an email or issuing a refund, your tool calls spend, and that call is one spend. Past a limit you set, Solenoid refuses the spend and your tool gets an error before it acts.</p>
+    <div class="mt-10 grid gap-6 md:grid-cols-2">
+      <section id="free" class={card}>
+        <h2 class="font-sans font-bold text-xl">Free</h2>
+        <p class="mt-3 text-zinc-400">100,000 spends each UTC calendar month. Once they are used, every spend is refused until the month turns, or until you move to Pro.</p>
+      </section>
+      <section id="pro" class={card}>
+        <h2 class="font-sans font-bold text-xl">Pro</h2>
+        <p class="mt-3 text-zinc-400">$29 USD a month, with 2M spends included each billing month. Past that, $10 USD per extra million.</p>
+      </section>
+    </div>
+    <section id="spend" class="mt-12">
+      <h2 class="font-sans font-bold text-xl">What counts as a spend</h2>
+      <p class="mt-3 text-zinc-400">Only a spend that Solenoid records counts. These are free: a spend Solenoid refuses; a retry that sends the same idempotency key again, which gets back the first receipt; reading your limits and usage; setting or changing a limit; recording what a model call really cost after it finishes, which is called a settle; and recovery emails.</p>
+    </section>
+    <section id="upgrade" class="mt-12">
+      <h2 class="font-sans font-bold text-xl">Move to Pro</h2>
+      <p class="mt-3 text-zinc-400">No account yet? In your project's root, run the command below. It creates your account, prints your admin key and writes a spend key to .env, unless .env already has one. support-bot is an example name, so use one that fits your agent.</p>
+      <pre class={cmd}><code>{INIT}</code></pre>
+      <p class="mt-4 text-zinc-400">Then run this. It opens Stripe Checkout in your browser. Your account moves to Pro once Stripe confirms the payment to Solenoid, and from then on the 100,000 cap no longer applies.</p>
+      <pre class={cmd}><code>{UPGRADE}</code></pre>
+    </section>
+    <section id="refunds" class="mt-12">
+      <h2 class="font-sans font-bold text-xl">Cancelling and refunds</h2>
+      <p class="mt-3 text-zinc-400">Cancel anytime: run <code>{UPGRADE}</code> again, and on Pro it prints a link to the Stripe billing portal, where you cancel. Pro runs to the end of the paid month, with no partial refunds. Overage is billed as used. No GST is charged. Solenoid is sold for business use, so the Consumer Guarantees Act does not apply.</p>
+    </section>
+  </main>
+  <Footer />
+</Layout>

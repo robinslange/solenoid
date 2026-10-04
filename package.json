@@ -1,0 +1,8 @@
+{
+  "name": "solenoid",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "pnpm -r run test", "typecheck": "pnpm -r run typecheck", "prepare": "lefthook install" },
+  "devDependencies": { "lefthook": "^2.1.14" }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@solenoid.systems/mcp",
+  "version": "2.0.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/robinslange/solenoid.git", "directory": "mcp" },
+  "homepage": "https://solenoid.systems",
+  "bugs": { "url": "https://github.com/robinslange/solenoid/issues" },
+  "engines": { "node": ">=20" },
+  "bin": { "solenoid-mcp": "dist/solenoid-mcp.mjs" },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "pnpm --filter @solenoid.systems/sdk build && esbuild src/bin.ts --bundle --format=esm --platform=node --banner:js='#!/usr/bin/env node' --outfile=dist/solenoid-mcp.mjs && chmod +x dist/solenoid-mcp.mjs",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "mutate": "STRYKER=1 HOME=\"$(mktemp -d)\" stryker run"
+  },
+  "devDependencies": {
+    "@solenoid.systems/sdk": "workspace:*",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.10"
+  }
+}

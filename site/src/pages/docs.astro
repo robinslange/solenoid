@@ -1,0 +1,25 @@
+---
+import { createHash } from 'node:crypto'
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import Layout from '@/layouts/Layout.astro'
+import { repoFile } from '@/lib/sources'
+import { Content, getHeadings } from '../../../sdk/README.md'
+
+const sections = getHeadings().filter((h) => h.depth === 2)
+const sha = createHash('sha256').update(repoFile('sdk/README.md')).digest('hex')
+---
+<Layout title="Solenoid SDK: keys, limits and receipts" description="The docs for Solenoid, which puts limits on the actions AI agents take: how to give an agent a spend key, set limits, call spend before each action, hold and settle model calls, and verify receipts offline." hasField={false}>
+  <Header pathname="/docs" />
+  <div class="relative z-10 max-w-6xl mx-auto px-6 pt-28 pb-16 flex gap-12">
+    <nav aria-label="Contents" class="hidden lg:block w-56 shrink-0 sticky top-28 self-start font-mono text-xs">
+      <ul class="space-y-2">
+        {sections.map((h) => <li><a href={`#${h.slug}`} class="text-zinc-500 hover:text-accent transition-colors">{h.text}</a></li>)}
+      </ul>
+    </nav>
+    <article id="readme" data-source-sha256={sha} class="prose prose-invert max-w-none min-w-0">
+      <Content />
+    </article>
+  </div>
+  <Footer />
+</Layout>

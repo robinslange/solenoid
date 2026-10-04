@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.bak
+reports/
+.stryker-tmp/
+.astro/
+!site/test/dist/
+.superpowers/
+.scrub-patterns

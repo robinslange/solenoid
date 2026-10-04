@@ -1,0 +1,41 @@
+---
+import { AGENT_PROMPT, INIT, PER_CUSTOMER, SCOPE, STOP } from '@/lib/start'
+
+interface Props { id: string }
+const { id } = Astro.props
+---
+<div class="w-full max-w-2xl text-left">
+  <ol id={id} class="space-y-8">
+    <li>
+      <p class="text-sm text-zinc-300">1. A scope is the name your spends and limits hang on. Here it is <code>{SCOPE}</code>, and each customer gets a child scope under it, such as <code>{SCOPE}/c-1042</code>. That name, the emails and the refunds are an example, so use your agent's name and actions. In your project's root, run this in your terminal:</p>
+      <div class="mt-2 flex items-stretch border border-[#333] bg-[#0a0a0b]">
+        <pre class="start-command flex-1 px-4 py-3 font-mono text-sm overflow-x-auto"><code>{INIT}</code></pre>
+        <button type="button" data-copy={INIT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
+      </div>
+      <p class="mt-2 text-sm text-zinc-500">It creates your account without a signup form. It prints your admin key and saves it on this machine. Keep a copy somewhere safe, because that key sets every limit. It also writes a spend key for <code>{SCOPE}</code> to <code>.env</code> as <code>SOLENOID_KEY</code>.</p>
+    </li>
+    <li>
+      <p class="text-sm text-zinc-300">2. Then give your coding agent this prompt:</p>
+      <div class="mt-2 flex items-stretch border border-[#333] bg-[#0a0a0b]">
+        <pre class="agent-prompt flex-1 min-w-0 px-4 py-3 font-mono text-sm whitespace-pre-wrap break-words"><code>{AGENT_PROMPT}</code></pre>
+        <button type="button" data-copy={AGENT_PROMPT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
+      </div>
+    </li>
+    <li>
+      <p class="text-sm text-zinc-300">3. Run the limit commands your agent suggests, such as <code class="limit-command">{PER_CUSTOMER}</code>. With <code>--per child</code>, each customer gets their own count of three emails.</p>
+      <p class="mt-2 text-sm text-zinc-500">Until a limit exists, every spend is recorded and none is refused, apart from the Free plan's monthly cap.</p>
+    </li>
+  </ol>
+  <p class="mt-8 text-sm text-zinc-400">Once your tools call <code>spend</code>, <code class="stop-command">{STOP}</code> stops every email that goes through Solenoid. From the next call on, it refuses every email spend under <code>{SCOPE}</code>, whatever the agent decides, and it replaces the per customer limit. To resume, run step 3's command again: <code>{PER_CUSTOMER}</code>.</p>
+  <p class="mt-4 text-sm text-zinc-500">Free for the first 100,000 spends each UTC calendar month. Past that, spends are refused until the month turns, unless you move to Pro. The <a href="/pricing" class="underline hover:text-accent">pricing page</a> has the details.</p>
+</div>
+
+<script>
+  for (const b of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
+    b.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(b.dataset.copy ?? '')
+      b.textContent = 'Copied'
+      setTimeout(() => { b.textContent = 'Copy' }, 1500)
+    })
+  }
+</script>

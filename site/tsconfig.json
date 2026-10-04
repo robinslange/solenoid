@@ -1,0 +1,5 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["src/*"] } },
+  "include": [".astro/types.d.ts", "src", "test", "scripts", "astro.config.ts", "tailwind.config.ts", "vitest.config.ts"]
+}

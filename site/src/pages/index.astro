@@ -1,0 +1,96 @@
+---
+import { Code } from 'astro:components'
+import BottomCTA from '@/components/BottomCTA.astro'
+import CodeTabs from '@/components/CodeTabs.astro'
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import MagneticFieldTitle from '@/components/MagneticFieldTitle.astro'
+import RaceTerminal from '@/components/RaceTerminal.astro'
+import StartSteps from '@/components/StartSteps.astro'
+import race from '@/data/race.json'
+import saved from '@/data/receipt.json'
+import Layout from '@/layouts/Layout.astro'
+import { atTag } from '@/lib/links'
+import { solenoidTheme } from '@/lib/shiki-theme'
+
+const TS = `import { solenoid } from '@solenoid.systems/sdk'
+
+const sol = solenoid() // reads SOLENOID_KEY from the environment
+
+export async function reply(customer: string, email: Email) {
+  await sol.spend(\`support-bot/\${customer}\`, { emails: 1 }) // throws LimitExceeded at the limit
+  await mailer.send(email)
+}`
+const CLI = `npx @solenoid.systems/cli limit support-bot emails=3 --per child
+npx @solenoid.systems/cli spend support-bot/c-1042 emails=1`
+const VERIFY = `import { verifyChain, type Receipt } from '@solenoid.systems/sdk'
+import saved from './receipt.json' with { type: 'json' } // the receipt above
+import wellKnown from './solenoid.json' with { type: 'json' } // saved once from https://api.solenoid.systems/.well-known/solenoid.json
+
+const receipt = saved as Receipt
+const { keys } = wellKnown
+await verifyChain([receipt], keys) // true, with no network call`
+const h2 = 'font-sans font-bold text-2xl md:text-3xl'
+const body = 'mt-4 text-zinc-400 max-w-2xl'
+---
+<Layout title="Solenoid: limits on your AI agent's emails, refunds and deletes" description="An agent stuck in a retry loop can email one customer forty times or refund an order twice. Tools that call Solenoid before they act are refused past their limit, and every recorded action gets a signed receipt.">
+  <Header pathname="/" />
+  <main class="relative z-10">
+    <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16">
+      <MagneticFieldTitle text="SOLENOID.SYSTEMS" />
+      <h1 class="font-sans font-black text-3xl md:text-5xl text-center max-w-3xl leading-tight">Your support agent has sent one customer the same email forty times. You type stop. The sends keep coming.</h1>
+      <p class="mt-6 text-lg text-zinc-400 text-center max-w-2xl">Solenoid keeps the count outside the agent. A spend is one call your tool makes before each action it takes. Your email tool calls <code>spend</code> before every send, and once that customer's limit is used up, <code>spend</code> throws and the send line after it never runs. Every recorded spend comes back with a signed receipt that anyone can check offline, as the receipt section below shows. Solenoid only limits tools that call it first.</p>
+      <p class="mt-4 text-zinc-400 text-center max-w-2xl"><code>spend</code> also throws when it can't reach Solenoid, so by default an outage stops the send too.</p>
+      <div class="mt-10 w-full flex justify-center"><StartSteps id="start-hero" /></div>
+    </section>
+
+    <div class="bg-[#050505]">
+      <section id="race" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>{race.calls} spends at the same moment, against a limit of {race.limit}</h2>
+        <p class={body}>This is a recording of a real run of Solenoid's API code on a local machine, the same code production runs, with each spend sent from its own client. {race.recorded} were recorded and the other {race.refused} were refused. The limit holds because each account's spends go through one Durable Object, a single Cloudflare instance that handles them one at a time.</p>
+        <p class={body}>Receipt ids count every entry on the account. This run's first entry, rcp_1, was the limit being set, so the spends start at rcp_2.</p>
+        <div class="mt-8"><RaceTerminal race={race} /></div>
+        <p class="mt-4 font-mono text-xs text-zinc-500">The test that proves it: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>. The script that recorded this: <a class="underline hover:text-accent" href={atTag('e2e/record-race.ts')}>e2e/record-race.ts</a>.</p>
+      </section>
+
+      <section id="one-call" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>One call, in front of the action</h2>
+        <p class={body}>Call <code>spend</code> before the send. At the limit, <code>spend</code> throws and the email never goes out. It throws by default when Solenoid can't be reached too, as the outage section below explains. The limit command in the CLI tab gives each customer three emails.</p>
+        <CodeTabs name="one-call" tabs={[{ label: 'TypeScript', lang: 'ts', code: TS }, { label: 'CLI', lang: 'sh', code: CLI }]} />
+      </section>
+
+      <section id="receipt" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>A signed receipt for every recorded spend</h2>
+        <p class={body}>This receipt came from the production API. Save the public keys once from https://api.solenoid.systems/.well-known/solenoid.json, and anyone can check it offline.</p>
+        <div class="mt-8 text-sm"><Code code={JSON.stringify(saved.receipt, null, 2)} lang="json" theme={solenoidTheme} /></div>
+        <div class="mt-4 text-sm"><Code code={VERIFY} lang="ts" theme={solenoidTheme} /></div>
+      </section>
+
+      <section id="limits" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>What it limits</h2>
+        <p class={body}>Any action your code can count, such as emails, refunds, deletes or fetches. A child scope is one level under the limit's scope, so support-bot/order-1 is a child of support-bot, and spends deeper down, such as support-bot/order-1/partial, count toward order-1. A limit of 1 with <code>--per child</code> makes an action happen at most once for each child scope, such as one refund per order. The test for that is the per child one in <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>.</p>
+        <p class={body}>If you cap model spend today, keep your gateway for that.</p>
+      </section>
+
+      <section id="outage" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>When Solenoid is down</h2>
+        <p class={body}>Say your email tool spends at support-bot/c-1042 and Solenoid can't be reached. By default every limit fails closed, so <code>spend</code> throws and the next email doesn't go out.</p>
+        <p class={body}>You can add <code>--on-outage open</code> to every limit over support-bot. A client that has seen that setting on an earlier spend then gets no receipt back from <code>spend</code>, and the email goes out unrecorded. A client that hasn't seen it yet still fails closed.</p>
+      </section>
+
+      <section id="pricing-strip" class="px-6 py-12 max-w-4xl mx-auto border-y border-[#222]">
+        <p class="text-zinc-300">A spend is one call your tool makes before an action. Free: 100,000 spends each UTC calendar month. Pro: $29 USD a month, including 2M spends each billing month. Past that, spends are charged as used, at $10 USD per million.</p>
+        <a href="/pricing" class="mt-3 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">See pricing</a>
+      </section>
+
+      <section id="why" class="px-6 py-20 max-w-4xl mx-auto">
+        <h2 class={h2}>Why this exists</h2>
+        <p class={body}>An agent can keep acting after its owner tells it to stop. A limit the agent can't talk its way past has to live outside the agent, so I built one.</p>
+        <a href="/why" class="mt-3 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">Why I built it</a>
+      </section>
+    </div>
+
+    <BottomCTA />
+  </main>
+  <Footer />
+</Layout>

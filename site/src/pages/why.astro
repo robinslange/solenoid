@@ -1,0 +1,24 @@
+---
+import Footer from '@/components/Footer.astro'
+import Header from '@/components/Header.astro'
+import Layout from '@/layouts/Layout.astro'
+
+const p = 'mt-5 text-zinc-300 leading-relaxed'
+const a = 'underline hover:text-accent'
+---
+<Layout title="Why Solenoid exists: agents that act where their owners don't want them to" description="A note from Robin Lange, who built Solenoid to put limits on AI agents' actions: public incidents where agents acted where their owners didn't want them to, and why the limit lives outside the agent.">
+  <Header pathname="/why" />
+  <main id="why" class="relative z-10 max-w-2xl mx-auto px-6 pt-32 pb-20">
+    <h1 class="font-sans font-black text-4xl">AI agents act where their owners don't want them to</h1>
+    <p class="mt-3 font-mono text-xs text-zinc-500">A note from Robin Lange, who builds software in Auckland and trades as omit.</p>
+    <p class={p}>In each of the public incidents below, an agent did something its owners did not want. In the first, its owner told it to stop, and it kept going.</p>
+    <p class={p}>On 23 February 2026, a woman TechCrunch describes as a Meta AI security researcher asked her OpenClaw agent to check her inbox and suggest what to delete or archive, and to confirm before acting. It started deleting her email. It kept going while she sent it commands to stop from her phone, and she had to run to the machine. TechCrunch notes it could not independently verify what happened to her inbox. (<a class={a} href="https://x.com/summeryue0/status/2025774069124399363">her post</a>, <a class={a} href="https://techcrunch.com/2026/02/23/a-meta-ai-security-researcher-said-an-openclaw-agent-ran-amok-on-her-inbox/">TechCrunch</a>, <a class={a} href="https://www.pcgamer.com/software/ai/i-had-to-run-to-my-mac-mini-like-i-was-defusing-a-bomb-openclaw-ai-chose-to-speedrun-deleting-meta-ai-safety-directors-inbox-due-to-a-rookie-error/">PC Gamer</a>)</p>
+    <p class={p}>In July 2025, SaaStr's founder said Replit's agent deleted his production database despite his instructions not to change any code without permission, then told him a rollback was impossible. The rollback worked. (<a class={a} href="https://www.theregister.com/2025/07/21/replit_saastr_vibe_coding_incident/">The Register</a>, <a class={a} href="https://incidentdatabase.ai/cite/1152/">AI Incident Database</a>)</p>
+    <p class={p}>In December 2025, SaaStr wrote that its outbound agent made up an A/B variant offering free tickets to SaaStr Annual, with no human approval, and that it cost them more than $2,000. (<a class={a} href="https://www.saastr.com/a-great-year-with-our-20-ai-agents-but-a-rough-week">SaaStr</a>)</p>
+    <p class={p}>On 14 July 2026, Zendesk reported AI agents stuck in loops, sending repeated messages. In some cases this went on after the end user stopped responding, or after a human agent replied. Zendesk traced it to a database fault in its own platform that stopped conversation state from updating. (<a class={a} href="https://support.zendesk.com/hc/en-us/articles/11046894936218-Service-Incident-July-14-2026-AI-Agents-Multiple-Pods-AI-Agents-Repeating-Messages">Zendesk</a>)</p>
+    <p class={p}>In the first of these, the owner's instruction to stop went through the agent itself, and the agent kept going. A limit the agent can't talk its way past has to live outside the agent, so I built one.</p>
+    <p class={p}>Your tools ask Solenoid before they act. Set emails=3 per customer, and each customer gets three emails; the fourth is refused, whatever the agent remembers. It only covers the tools that ask first. Every action it allows comes back with a signed receipt, so afterwards you can show what the agent did through the tools that ask Solenoid.</p>
+    <p class={p}>Robin</p>
+  </main>
+  <Footer />
+</Layout>

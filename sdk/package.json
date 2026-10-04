@@ -1,0 +1,34 @@
+{
+  "name": "@solenoid.systems/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/robinslange/solenoid.git", "directory": "sdk" },
+  "homepage": "https://solenoid.systems",
+  "bugs": { "url": "https://github.com/robinslange/solenoid/issues" },
+  "engines": { "node": ">=20" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/solenoid.mjs" },
+    "./node": { "types": "./dist/node.d.ts", "default": "./dist/node.mjs" }
+  },
+  "files": ["dist", "README.md", "llms.txt"],
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=neutral --outfile=dist/solenoid.mjs && esbuild src/node.ts --bundle --format=esm --platform=node --outfile=dist/node.mjs && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage",
+    "mutate": "STRYKER=1 stryker run"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "esbuild": "^0.24.0",
+    "fast-check": "^4.10.2",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.61.1"
+  }
+}

@@ -1,0 +1,14 @@
+export const GRID_SPACING_DESKTOP = 40
+export const GRID_SPACING_MOBILE = 60
+export const LINE_LENGTH = 14
+export const LINE_COLOR = 0x888888
+export const BRIGHT_COLOR = 0xcccccc
+export const ACCENT_COLOR = 0xff3f00
+export const ACCENT_MIX = 0.08
+export const LINE_WIDTH = 1.5
+export const ORBIT_RADIUS = 200
+export const ORBIT_SPEED = 0.015
+export const PROXIMITY_THRESHOLD = 250
+export const CROWD_STRENGTH = 0.08
+export const CROWD_RETURN_FACTOR = 0.15
+export const MOBILE_INTENSITY_SCALE = 0.3
