@@ -23,7 +23,7 @@ const { _checked, ...BUNDLED_PRICES } = pricesJson as Record<string, unknown>
 export type Run = {
   scope: string
   spend(amounts: Amounts): Promise<Receipt | null>
-  llm<Req extends object, Res>(call: (req: Req) => Promise<Res>, req: Req, o?: { price?: Price }): Promise<Res>
+  llm<Req extends object, Res>(call: (req: Req) => Promise<Res>, req: Req, o?: { price?: Price; model?: string; shrink?: boolean }): Promise<Res>
 }
 
 const expired = (left: Record<string, Left>): boolean => Object.values(left).some((l) => l.resets !== null && Date.parse(l.resets) <= Date.now())
@@ -160,9 +160,11 @@ export function solenoid(opts: Options = {}) {
       spend: (amounts) => spend(scope, amounts),
       async llm(callFn, req, o = {}) {
         const r = req as Record<string, unknown>
-        const price = o.price ?? priceTable[String(r.model ?? '')]
+        // `model` names the price when the request does not, as with the Workers AI binding's run(model, input).
+        const price = o.price ?? priceTable[String(o.model ?? r.model ?? '')]
+        const shrink = o.shrink ?? true
         const cached = remaining.get(scope)
-        let plan = cached && price && ('tokens' in cached || 'usd' in cached) && !expired(cached) ? tryPlan(scope, r, cached, price) : null
+        let plan = cached && price && ('tokens' in cached || 'usd' in cached) && !expired(cached) ? tryPlan(scope, r, cached, price, shrink) : null
         if (!plan) {
           let left
           try {
@@ -172,7 +174,7 @@ export function solenoid(opts: Options = {}) {
             if ((await modeFor(scope)) !== 'open') throw new SolenoidUnavailable(scope, e)
             return callFn(req)
           }
-          plan = planCall(scope, r, left, price)
+          plan = planCall(scope, r, left, price, shrink)
         }
         if (!plan.hold) {
           const res = await callFn(req)
