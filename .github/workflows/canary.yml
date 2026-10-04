@@ -22,6 +22,5 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter "@solenoid/e2e..."
       - run: pnpm --filter @solenoid.systems/sdk build
       - run: node e2e/canary.ts
-        if: env.SOLENOID_CANARY_KEY != ''
         env:
           CANARY_REGION: github-us
