@@ -75,3 +75,9 @@ Local Worker on `127.0.0.1:8790`, since 8787 and 8788 were held by other local d
 - The private repository is now `robinslange/solenoid-history`, archived and private. Its `main` was c56c927.
 - The public repository https://github.com/robinslange/solenoid starts from one snapshot commit, 03768a2 "Solenoid", tagged `launch` (277 files, the same as the index). The `history` remote fetches the archive, and pushing to it is disabled.
 - `check-dist --launch` over the cutover build: 0 problems; the site's GitHub links answer 200.
+
+## Task 22: the canary (2026-10-04)
+
+- A production canary account was created; its admin and spend keys are in the 1Password item as `CANARY_ADMIN_KEY` and `CANARY_SPEND_KEY`.
+- Region 1, GitHub's US runners: the `SOLENOID_CANARY_KEY` secret is set, and the first dispatched run is green: `ok github-us seq 2`.
+- Region 2, a second host in Auckland: the public repository is cloned and built in a `node:24` container (the root `prepare` script's `lefthook install` needs `LEFTHOOK=0` there, and git needs the mount marked `safe.directory`). The env file is mode 600, and it alerts through the API Worker's existing send-only Resend key, to security@solenoid.systems, which forwards to Robin. A run with a broken key failed with `invalid_key (401)` and sent the alert; a run with the real key printed `ok omit-nz seq 3`. The cron entry runs every 30 minutes.
