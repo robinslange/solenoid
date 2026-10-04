@@ -15,7 +15,11 @@ function fileFor(dist, pathname) {
   return [p.slice(1), `${p.slice(1)}.html`].find((f) => existsSync(join(dist, f)))
 }
 
-export function checkLinks(dist, { repoRoot, launch = false, git = (args) => execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8' }) }) {
+// A git hook sets GIT_DIR and GIT_INDEX_FILE for the repository being
+// committed, and they win over -C: git here must see repoRoot alone.
+export const gitEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+
+export function checkLinks(dist, { repoRoot, launch = false, git = (args) => execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8', env: gitEnv() }) }) {
   const problems = []
   let atTag = null
   if (launch) {

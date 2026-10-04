@@ -5,11 +5,14 @@ import { expect, it } from 'vitest'
 import { sandbox } from './setup'
 
 const SCRIPT = resolve(__dirname, '../../scripts/scrub-check.mjs')
-const run = (cwd: string, ...patterns: string[]) => spawnSync(process.execPath, [SCRIPT, ...patterns], { cwd, encoding: 'utf8' })
+// A git hook sets GIT_DIR and GIT_INDEX_FILE for the repository being
+// committed; the sandbox repository must not inherit them.
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+const run = (cwd: string, ...patterns: string[]) => spawnSync(process.execPath, [SCRIPT, ...patterns], { cwd, encoding: 'utf8', env })
 
 it('lists staged lines holding any pattern, ignores untracked and unstaged text, and exits 1 only on a hit', () => {
   const dir = mkdtempSync(join(sandbox, 'scrub-'))
-  const git = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { cwd: dir })
+  const git = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { cwd: dir, env })
   git('init', '-q')
   writeFileSync(join(dir, 'a.md'), 'clean\nreach me at someone@example.org\n')
   git('add', 'a.md')
