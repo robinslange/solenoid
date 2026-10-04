@@ -219,13 +219,24 @@ const res = await sol.at('support-bot/c-8f2a').llm(
 )
 ```
 
+With the [Workers AI binding](https://developers.cloudflare.com/workers-ai/configuration/bindings/), `env.AI.run(model, input)` takes the model apart from the request, so name it with `model`, which picks the price:
+
+```ts
+const model = '@cf/google/gemma-4-26b-a4b-it'
+const res = await sol.at('pinky/extract').llm(
+  (input: object) => env.AI.run(model, input),
+  { messages: [{ role: 'user', content: 'Extract the claims.' }], max_tokens: 1200 },
+  { model },
+)
+```
+
 The callback's parameter is annotated so TypeScript keeps the provider's request type. Both type names come from the providers' own SDKs: [`ChatCompletionCreateParamsNonStreaming`](https://github.com/openai/openai-node/blob/v7.23.0/src/resources/chat/completions/completions.ts) in `openai`, and [`MessageCreateParamsNonStreaming`](https://github.com/anthropics/anthropic-sdk-typescript/blob/sdk-v0.128.0/src/resources/messages/messages.ts) in `@anthropic-ai/sdk`. These samples were typechecked against [`openai` 7.23.0](https://www.npmjs.com/package/openai/v/7.23.0) and [`@anthropic-ai/sdk` 0.128.0](https://www.npmjs.com/package/@anthropic-ai/sdk/v/0.128.0), and both type links point at those release tags.
 
 When a `tokens` or `usd` limit applies to the scope, `llm` does this:
 
 1. Reads what is left, from the last response cached for this scope or with one GET. It sends the GET when nothing is cached for this scope, when a cached figure is past its reset time, when the model has no price, and when the cached figures would refuse the call. A limit added or lowered since that response still applies, because Solenoid checks every limit when it takes the hold in step 4.
 2. Estimates the input as the length in characters of your request serialised as JSON, leaving out `model` and the output-cap fields, divided by 4 and multiplied by 1.2. If the input alone doesn't fit, it throws `LimitExceeded` without calling the provider.
-3. Caps the output at what is left after the input, and rewrites your request to carry that cap. It writes the cap into `max_completion_tokens` if your request has that field, and into `max_tokens` otherwise. It never sets both. If your request sets neither, the cap is the model's `max_output` from the bundled price table, or 4096 for a model it doesn't know.
+3. Caps the output at what is left after the input, and rewrites your request to carry that cap. A model whose price has no output (`output: 0`: an embedding, a reranker or a decision model) has nothing to cap: its request goes unchanged, and the hold is its input. With `{ shrink: false }`, a call that cannot have all the output it asks for throws `LimitExceeded` instead of going with a smaller cap; use it when output cut short is no use, as with JSON. It writes the cap into `max_completion_tokens` if your request has that field, and into `max_tokens` otherwise. It never sets both. If your request sets neither, the cap is the model's `max_output` from the bundled price table, or 4096 for a model it doesn't know.
 4. **Holds** the worst case with a spend. A concurrent call that would go over the limit gets `LimitExceeded` here, before its provider call.
 5. Calls the provider.
 6. **Settles** the actual usage against the hold. If the provider call threw, it settles to zero, which releases the hold.
@@ -243,6 +254,8 @@ The SDK reads usage from these response fields:
 | OpenAI-compatible ([chat completion object](https://platform.openai.com/docs/api-reference/chat/object)) | `usage.prompt_tokens` | `usage.completion_tokens` |
 | Anthropic ([Messages reference](https://platform.claude.com/docs/en/api/messages)) | `usage.input_tokens` + `usage.cache_read_input_tokens` + `usage.cache_creation_input_tokens` | `usage.output_tokens` |
 
+Workers AI's text and embedding models answer in the OpenAI-compatible shape, and its decision models (Clef) in the Anthropic one. An embedding call's `usage.prompt_tokens` is what Workers AI bills: every text at the length of the call's longest (measured 4 October 2026: texts of about 3 and 400 tokens reported 804).
+
 **Prices.** The SDK bundles a price table, in USD per token, taken from the providers' pricing pages on 24 September 2026:
 
 | Model | Input per million | Output per million | `max_output` | Source |
@@ -251,6 +264,16 @@ The SDK reads usage from these response fields:
 | `gpt-4.1-mini` | $0.40 | $1.60 | 32,768 | [OpenAI model page](https://platform.openai.com/docs/models/gpt-4.1-mini) |
 | `claude-sonnet-5` | $2 | $10 | 128,000 | [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing), [models](https://platform.claude.com/docs/en/about-claude/models/overview) |
 | `claude-haiku-4-5` | $1 | $5 | 64,000 | [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing), [models](https://platform.claude.com/docs/en/about-claude/models/overview) |
+
+Workers AI models, from each model's page on 4 October 2026:
+
+| Model | Input per million | Output per million | Source |
+|---|---|---|---|
+| `@cf/google/gemma-4-26b-a4b-it` | $0.10 | $0.30 | [model page](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/) |
+| `@cf/baai/bge-large-en-v1.5` | $0.204 | none | [model page](https://developers.cloudflare.com/workers-ai/models/bge-large-en-v1.5/) |
+| `@cf/baai/bge-reranker-base` | $0.00311 | none | [model page](https://developers.cloudflare.com/workers-ai/models/bge-reranker-base/) |
+| `@cf/cloudflare/clef` | $0.24 | free | [model page](https://developers.cloudflare.com/workers-ai/models/clef/) |
+| `@cf/cloudflare/clef-flash` | $0.09 | free | [model page](https://developers.cloudflare.com/workers-ai/models/clef-flash/) |
 
 A `usd` limit on any other model throws `SolenoidError` with code `unknown_price`, before any request, unless you give a price per call or per client:
 
@@ -530,4 +553,5 @@ Here `./app.js` stands for your module that calls `solenoid()` at load, such as 
 - **The input estimate can be low.** A request whose real input is larger than the estimate can end above a `tokens` or `usd` limit. Settle records the real usage afterwards.
 - **The SDK does not read usage from streamed responses.** A held call with a streamed response is recorded at its full hold, and a call with no `tokens` or `usd` limit records nothing.
 - **Anthropic cache writes are counted at the base input rate.** [Anthropic's prompt caching docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) price 5-minute cache writes at 1.25 times the base input rate and 1-hour writes at 2 times. A `usd` limit undercounts them, so heavy cache writing can take real cost past the limit. Cache reads cost 0.1 times the base rate on the same page, and the SDK counts them at the full base rate, which overcounts them and errs toward the limit.
+- **A very cheap call counts as a millionth of a dollar.** Amounts are rounded up to six decimal places, so a call that costs less, such as a short reranker call at about $0.00000006, is recorded as $0.000001. It errs toward the limit.
 - **Omitting the output cap gives the default.** Under a `tokens` or `usd` limit, a request with no `max_tokens` or `max_completion_tokens` is capped at the model's `max_output`, or 4096. Set it yourself if you need longer output.

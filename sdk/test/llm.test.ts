@@ -66,6 +66,55 @@ describe('planCall default output ceiling', () => {
   })
 })
 
+describe('planCall for a model whose output is free', () => {
+  const EMBED = { input: 2.04e-7, output: 0 }
+
+  it('holds the input alone and leaves the request as it is, since there is no output to cap', () => {
+    const req = { text: ['a sourdough starter', 'flour and water'], pooling: 'cls' }
+    const { req: planned, hold } = planCall('s', req, { usd: { scope: 's', left: 1, resets: null } }, EMBED)
+    expect(planned).toEqual(req)
+    expect(hold).toEqual({ tokens: estimateInput(req), usd: estimateInput(req) * EMBED.input })
+  })
+
+  it('refuses when the input alone does not fit', () => {
+    const req = { text: ['x'.repeat(4000)] }
+    expect(() => planCall('s', req, { usd: { scope: 's', left: 1e-6, resets: null } }, EMBED)).toThrow(LimitExceeded)
+    expect(() => planCall('s', req, { tokens: { scope: 's', left: 10, resets: null } }, EMBED)).toThrow(LimitExceeded)
+  })
+
+  it('never plans a hold larger than what is left (property)', () => {
+    let seed = 11
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31)
+    for (let i = 0; i < 2000; i++) {
+      const price = { input: rnd() * 1e-5, output: 0 }
+      const left = { tokens: { scope: 's', left: Math.floor(rnd() * 2000), resets: null }, usd: { scope: 's', left: rnd() * 0.01, resets: null } }
+      const req = { text: ['x'.repeat(Math.floor(rnd() * 4000))] }
+      try {
+        const { req: planned, hold } = planCall('s', req, left, price)
+        expect(planned).toBe(req)
+        expect(hold!.tokens).toBeLessThanOrEqual(left.tokens.left)
+        expect(hold!.usd!).toBeLessThanOrEqual(left.usd.left + 1e-12)
+      } catch (e) {
+        expect(e).toBeInstanceOf(LimitExceeded)
+      }
+    }
+  })
+})
+
+describe('planCall with shrink off', () => {
+  const req = { model: 'm', max_tokens: 1000, messages: [] }
+
+  it('refuses a call whose requested output does not fit, rather than sending it with a smaller cap', () => {
+    expect(() => planCall('s', req, { tokens: { scope: 's', left: 500, resets: null } }, P, false)).toThrow(LimitExceeded)
+  })
+
+  it('sends a call that fits with the output it asked for', () => {
+    const { req: planned, hold } = planCall('s', req, { tokens: { scope: 's', left: 5000, resets: null } }, P, false)
+    expect(planned.max_tokens).toBe(1000)
+    expect(hold!.tokens).toBe(estimateInput(req) + 1000)
+  })
+})
+
 type Post = { body: Record<string, any>; idem: string }
 function client(limits: object[], opts: { holdStatus?: number; getDown?: boolean; store?: Map<string, 'open' | 'closed'> } = {}) {
   const posts: Post[] = []
@@ -128,6 +177,30 @@ describe('at(scope).llm', () => {
     await sol.at('s').llm(async () => usage(3, 4), { model: 'm', messages: [] })
     expect(posts).toHaveLength(1)
     expect(posts[0].body).toMatchObject({ tokens: 7 })
+  })
+
+  it('prices a Workers AI binding call by the model it names, since the binding takes the model apart from the request', async () => {
+    const { posts, sol } = client([{ unit: 'usd', left: 1, scope: 's' }])
+    const req = { messages: [{ role: 'user', content: 'hi' }], max_tokens: 40 }
+    await sol.at('s').llm(async () => usage(20, 10), req, { model: '@cf/google/gemma-4-26b-a4b-it' })
+    expect(posts[1].body.settle.usd).toBeCloseTo(20 * 1e-7 + 10 * 3e-7, 12)
+  })
+
+  it('sends a Clef request unchanged and settles its input, its output being free', async () => {
+    const { posts, sol } = client([{ unit: 'usd', left: 1, scope: 's' }])
+    const req = { model: 'clef', state: { q: 'x' }, questions: { verdict: { type: 'choice', instructions: 'i', criteria: { a: 'A', b: 'B' } } } }
+    const provider = vi.fn(async (_r: typeof req) => ({ answers: {}, usage: { input_tokens: 200, output_tokens: 0 } }))
+    await sol.at('s').llm(provider, req, { model: '@cf/cloudflare/clef' })
+    expect(provider.mock.calls[0][0]).toEqual(req)
+    expect(posts[1].body.settle.tokens).toBe(200)
+    expect(posts[1].body.settle.usd).toBeCloseTo(200 * 2.4e-7, 12)
+  })
+
+  it('refuses a call under shrink: false before the provider, when its output would be cut', async () => {
+    const { sol } = client([{ unit: 'tokens', left: 500, scope: 's' }])
+    const provider = vi.fn()
+    await expect(sol.at('s').llm(provider, { model: 'm', max_tokens: 1000, messages: [] }, { shrink: false })).rejects.toBeInstanceOf(LimitExceeded)
+    expect(provider).not.toHaveBeenCalled()
   })
 
   it('follows the cached outage mode when the budget read fails', async () => {

@@ -25,7 +25,7 @@ This page is written for you, the coding agent integrating Solenoid. "The develo
 - spend(scope, amounts, { idempotencyKey? }): Promise<Receipt | null>
 - limit(scope, body): admin key only. Body is sent as is: { <unit>: number | null, per?, on_outage?, warn_at? }. 0 refuses every spend of the unit, null removes the limit. per, on_outage and warn_at apply to every unit in the call.
 - get(scope, { before? }): limits (used, left, resets), children, entries newest first, 50 per page; next is the before value for the following page. A spend key can read its own scope and below.
-- at(scope): { scope, spend(amounts), llm(callFn, req, { price? }) }
+- at(scope): { scope, spend(amounts), llm(callFn, req, { price?, model?, shrink? }) }
 - run(scope, fn): runs fn with at(scope + "/run-<random id>") and returns its result.
 - verify(receipt): Promise<boolean>. Fetches keys once from <api>/.well-known/solenoid.json. When the receipt's kid is missing from them, fetches again with a fresh ?t= query string, so no HTTP cache answers; at most once every 5 seconds per client, shared across kids, so an unknown kid met inside that interval gets false without a fetch. If the fetch fails, keeps the old keys and returns false for the unknown kid.
 - verifyChain(entries): Promise<boolean>. Entries must be consecutive and ascending. Only the root scope's pages are consecutive, and reading get("") needs the admin key, so this runs in the developer's tooling. Each page holds 50 entries, newest first: to check more, pass each page's next as before, concatenate the pages, then reverse.
@@ -61,13 +61,15 @@ This page is written for you, the coding agent integrating Solenoid. "The develo
 - With a tokens or usd limit on the scope, llm:
   1. Reads what is left for this scope: cached from the last response for this scope, or one GET when nothing is cached for it, a cached figure is past its reset time, the model has no price, or the cached figures would refuse the call. A limit added or lowered since that response still applies, because Solenoid checks every limit when it takes the hold.
   2. Estimates input tokens as the character length of the request's JSON, minus model and the output-cap fields, divided by 4, times 1.2. Throws LimitExceeded before the provider call if the input can't fit.
-  3. Rewrites the request's output cap: max_completion_tokens if the request has it, else max_tokens, never both. Unset means the model's max_output, or 4096.
+  3. Rewrites the request's output cap: max_completion_tokens if the request has it, else max_tokens, never both. Unset means the model's max_output, or 4096. A model priced with output 0 (embedding, reranker, Clef) has nothing to cap: the request goes unchanged and the hold is its input. With { shrink: false }, a call that cannot have all the output it asks for throws LimitExceeded instead of going with a smaller cap (for output that is useless cut short, such as JSON).
   4. Holds the worst case, then calls the provider.
   5. Settles actual usage. Provider throws: settles to zero. Settle fails: the response is still returned and the hold stands.
 - Without one: the request is sent unchanged and actual usage is spent afterwards.
+- Workers AI binding: env.AI.run(model, input) takes the model apart from the request, so pass it as { model }, which picks the price: sol.at(scope).llm((input) => env.AI.run(model, input), input, { model }).
 - Field names: max_completion_tokens and max_tokens (https://platform.openai.com/docs/api-reference/chat/create), max_tokens (https://platform.claude.com/docs/en/api/messages). For OpenAI, set max_completion_tokens in the request: OpenAI's reference marks max_tokens deprecated and not compatible with its reasoning models, and the SDK writes its cap into whichever field the request has.
-- Usage read: usage.prompt_tokens and usage.completion_tokens (https://platform.openai.com/docs/api-reference/chat/object); usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens, and usage.output_tokens (https://platform.claude.com/docs/en/api/messages).
+- Usage read: usage.prompt_tokens and usage.completion_tokens (https://platform.openai.com/docs/api-reference/chat/object); usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens, and usage.output_tokens (https://platform.claude.com/docs/en/api/messages). Workers AI text and embedding models use the first shape, its decision models (Clef) the second. An embedding call's usage.prompt_tokens is what Workers AI bills: every text at the length of the call's longest (measured 4 Oct 2026).
 - Bundled prices, taken 24 Sep 2026 from https://platform.openai.com/docs/models/gpt-4.1, https://platform.openai.com/docs/models/gpt-4.1-mini, https://platform.claude.com/docs/en/about-claude/pricing and https://platform.claude.com/docs/en/about-claude/models/overview. USD per token in, per token out, and max_output: gpt-4.1 0.000002, 0.000008, 32768. gpt-4.1-mini 0.0000004, 0.0000016, 32768. claude-sonnet-5 0.000002, 0.00001, 128000. claude-haiku-4-5 0.000001, 0.000005, 64000. Other models under a usd limit throw unknown_price unless given { price: { input, output, max_output? } } per call or solenoid({ prices }).
+- Bundled Workers AI prices, taken 4 Oct 2026 from each model's page under https://developers.cloudflare.com/workers-ai/models/. USD per token in, per token out: @cf/google/gemma-4-26b-a4b-it 0.0000001, 0.0000003. @cf/baai/bge-large-en-v1.5 0.000000204, 0. @cf/baai/bge-reranker-base 0.00000000311, 0. @cf/cloudflare/clef 0.00000024, 0. @cf/cloudflare/clef-flash 0.00000009, 0.
 - TypeScript: annotate the callback, e.g. (req: OpenAI.ChatCompletionCreateParamsNonStreaming) => openai.chat.completions.create(req). Type defined in https://github.com/openai/openai-node/blob/v7.23.0/src/resources/chat/completions/completions.ts (openai 7.23.0, https://www.npmjs.com/package/openai/v/7.23.0).
 
 ## Recovery
@@ -151,6 +153,7 @@ The outbox holds 2 emails after verifyEmail: the attach code and the confirmatio
 ## Known bounds
 - The input estimate can be low; settle records the real usage afterwards, which can end above the limit.
 - The SDK does not read usage from streamed responses: a held call records its full hold, an unheld one records nothing.
+- Amounts are rounded up to six decimal places, so a call costing less than $0.000001 (a short reranker call) is recorded as $0.000001, which errs toward the limit.
 - Anthropic cache writes are counted at the base input rate, but priced at 1.25 times (5 minute) or 2 times (1 hour) that rate (https://platform.claude.com/docs/en/build-with-claude/prompt-caching). A usd limit undercounts them and can be exceeded. Cache reads cost 0.1 times the base rate on the same page; the SDK counts them at the full base rate, which overcounts and errs toward the limit.
 
 ## Example: guard an existing function that fetches URLs
