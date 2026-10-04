@@ -68,3 +68,10 @@ Local Worker on `127.0.0.1:8790`, since 8787 and 8788 were held by other local d
 - Built from `main` at de8c253; `check-dist` in development mode: 0 problems (the `--launch` check runs after the repository opens, by Robin's order: cutover first, then Task 19).
 - Robin deployed `solenoid-systems`: version b985bfe9-4248-4989-b729-23894096b230 on `solenoid.systems` and `www.solenoid.systems`. Rollback target: ff4e4458-27f2-4b25-b342-ced607dfc078, valid until Plan 3b deletes `solenoid-api-gateway`.
 - Production: both hosts serve `id="start-hero"`; `check-routes` over the 303 old paths: 0 problems; `/llms.txt` and `/llms-full.txt` match the SDK byte for byte; `/pricing` answers 200.
+
+## Task 19: the public repository (2026-10-04)
+
+- Opened after the cutover, by Robin's order. Preconditions held: a clean tree, the no-reply author, only `docs/superpowers/` files tracked under a `superpowers/` path, `.scrub-patterns` untracked, and the scrub clean against 18 patterns.
+- The private repository is now `robinslange/solenoid-history`, archived and private. Its `main` was c56c927.
+- The public repository https://github.com/robinslange/solenoid starts from one snapshot commit, 03768a2 "Solenoid", tagged `launch` (277 files, the same as the index). The `history` remote fetches the archive, and pushing to it is disabled.
+- `check-dist --launch` over the cutover build: 0 problems; the site's GitHub links answer 200.
