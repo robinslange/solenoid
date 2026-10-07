@@ -38,15 +38,15 @@ const note = 'mt-4 font-mono text-xs text-zinc-500'
   <main class="relative z-10">
     <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16">
       <MagneticFieldTitle text="SOLENOID.SYSTEMS" />
-      <h1 class="font-sans font-black text-3xl md:text-5xl text-center max-w-3xl leading-tight">You type stop. The emails keep coming.</h1>
-      <p class="mt-6 text-lg text-zinc-400 text-center max-w-2xl">Solenoid puts the limit outside your agent. Your agent's tools call <code>spend</code> before they act, and past the limit the action never runs.</p>
+      <h1 class="font-sans font-black text-3xl md:text-5xl text-center max-w-3xl leading-tight">One retry, and your agent refunds the same order twice.</h1>
+      <p class="mt-6 text-lg text-zinc-400 text-center max-w-2xl">Solenoid counts refunds per order, outside the agent. Allow one per order, and the second refund is refused before it runs. It only stops tools that ask Solenoid first.</p>
       <div id="start-hero" class="mt-10 w-full max-w-2xl">
         <div class="flex items-stretch border border-[#333] bg-[#0a0a0b]">
           <pre class="start-command flex-1 px-4 py-3 font-mono text-sm overflow-x-auto"><code>{INIT}</code></pre>
           <button type="button" data-copy={INIT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
         </div>
-        <p class="mt-2 text-sm text-zinc-500">Run it in your project's root. It creates your account, writes a spend key to <code>.env</code> and saves your admin key for the CLI.</p>
-        <a href="#start" class="mt-6 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">Next: the prompt for your coding agent</a>
+        <p class="mt-2 text-sm text-zinc-500">Run it in your project's root. No email, no card: it creates your account, writes your bot's key to <code>.env</code> and saves your admin key for the CLI.</p>
+        <a href="#start" class="mt-6 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">Next: the prompt that has your coding assistant add it</a>
       </div>
     </section>
 
@@ -74,7 +74,7 @@ const note = 'mt-4 font-mono text-xs text-zinc-500'
       <div class="px-6 py-20 max-w-4xl mx-auto grid gap-12 md:grid-cols-2">
         <section id="limits">
           <h2 class={h3}>Any action your code can count</h2>
-          <p class="mt-3 text-zinc-400"><code>--per child</code> gives each customer its own count, so <code>refunds=1</code> allows one refund per customer. To cap model costs, keep your gateway for that.</p>
+          <p class="mt-3 text-zinc-400"><code>--per child</code> gives each customer or order its own count, so <code>refunds=1</code> allows one refund per order. To cap model costs, keep your gateway for that.</p>
           <p class={note}><a class="underline hover:text-accent" href="/docs#at-most-once">Per-order limits, in the docs</a>. Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>.</p>
         </section>
         <section id="outage">
