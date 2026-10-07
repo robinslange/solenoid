@@ -1,17 +1,15 @@
 ---
-import { Code } from 'astro:components'
 import BottomCTA from '@/components/BottomCTA.astro'
 import CodeTabs from '@/components/CodeTabs.astro'
 import Footer from '@/components/Footer.astro'
 import Header from '@/components/Header.astro'
 import MagneticFieldTitle from '@/components/MagneticFieldTitle.astro'
 import RaceTerminal from '@/components/RaceTerminal.astro'
-import StartSteps from '@/components/StartSteps.astro'
 import race from '@/data/race.json'
 import saved from '@/data/receipt.json'
 import Layout from '@/layouts/Layout.astro'
 import { atTag } from '@/lib/links'
-import { solenoidTheme } from '@/lib/shiki-theme'
+import { INIT } from '@/lib/start'
 
 const TS = `import { solenoid } from '@solenoid.systems/sdk'
 
@@ -31,7 +29,9 @@ const receipt = saved as Receipt
 const { keys } = wellKnown
 await verifyChain([receipt], keys) // true, with no network call`
 const h2 = 'font-sans font-bold text-2xl md:text-3xl'
+const h3 = 'font-sans font-bold text-xl'
 const body = 'mt-4 text-zinc-400 max-w-2xl'
+const note = 'mt-4 font-mono text-xs text-zinc-500'
 ---
 <Layout title="Solenoid: limits on your AI agent's emails, refunds and deletes" description="Solenoid limits what your AI agent's tools do. Each tool calls spend before it acts, and past the limit spend throws, so the action never runs. Every recorded spend gets a signed receipt.">
   <Header pathname="/" />
@@ -39,52 +39,60 @@ const body = 'mt-4 text-zinc-400 max-w-2xl'
     <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16">
       <MagneticFieldTitle text="SOLENOID.SYSTEMS" />
       <h1 class="font-sans font-black text-3xl md:text-5xl text-center max-w-3xl leading-tight">You type stop. The emails keep coming.</h1>
-      <p class="mt-6 text-lg text-zinc-400 text-center max-w-2xl">Solenoid limits your AI agent's actions from outside the agent. Your email tool calls <code>spend</code> before each send. Past the limit, <code>spend</code> throws and the send never runs. Every recorded spend comes back with a signed receipt.</p>
-      <p class="mt-4 text-zinc-400 text-center max-w-2xl">By default <code>spend</code> also throws when Solenoid can't be reached. It only limits tools that call it first.</p>
-      <div class="mt-10 w-full flex justify-center"><StartSteps id="start-hero" /></div>
+      <p class="mt-6 text-lg text-zinc-400 text-center max-w-2xl">Solenoid puts the limit outside your agent. Your agent's tools call <code>spend</code> before they act, and past the limit the action never runs.</p>
+      <div id="start-hero" class="mt-10 w-full max-w-2xl">
+        <div class="flex items-stretch border border-[#333] bg-[#0a0a0b]">
+          <pre class="start-command flex-1 px-4 py-3 font-mono text-sm overflow-x-auto"><code>{INIT}</code></pre>
+          <button type="button" data-copy={INIT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
+        </div>
+        <p class="mt-2 text-sm text-zinc-500">Run it in your project's root. It creates your account, writes a spend key to <code>.env</code> and saves your admin key for the CLI.</p>
+        <a href="#start" class="mt-6 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">Next: the prompt for your coding agent</a>
+      </div>
     </section>
 
     <div class="bg-[#050505]">
       <section id="race" class="px-6 py-20 max-w-4xl mx-auto">
-        <h2 class={h2}>{race.calls} spends at the same moment, against a limit of {race.limit}</h2>
-        <p class={body}>A recorded local run of Solenoid's API code, one client per spend. {race.recorded} were recorded and {race.refused} refused. Each account's spends go through one Cloudflare Durable Object, which handles them one at a time.</p>
+        <h2 class={h2}>{race.calls} spends hit a limit of {race.limit} at once. Exactly {race.recorded} got through.</h2>
+        <p class={body}>A recorded run of Solenoid's API code, one client per spend.</p>
         <div class="mt-8"><RaceTerminal race={race} /></div>
-        <p class="mt-4 font-mono text-xs text-zinc-500">Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>. Recorder: <a class="underline hover:text-accent" href={atTag('e2e/record-race.ts')}>e2e/record-race.ts</a>.</p>
+        <p class={note}>Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>. Recorder: <a class="underline hover:text-accent" href={atTag('e2e/record-race.ts')}>e2e/record-race.ts</a>.</p>
       </section>
 
       <section id="one-call" class="px-6 py-20 max-w-4xl mx-auto">
         <h2 class={h2}>One call, in front of the action</h2>
-        <p class={body}>Call <code>spend</code> before the send. At the limit, <code>spend</code> throws and the email never goes out. The CLI tab's limit gives each customer three emails.</p>
+        <p class={body}>At the limit, <code>spend</code> throws and the email never goes out. It only limits tools that call it first.</p>
         <CodeTabs name="one-call" tabs={[{ label: 'TypeScript', lang: 'ts', code: TS }, { label: 'CLI', lang: 'sh', code: CLI }]} />
       </section>
 
       <section id="receipt" class="px-6 py-20 max-w-4xl mx-auto">
         <h2 class={h2}>A signed receipt for every recorded spend</h2>
-        <p class={body}>This one came from the production API. Save the public keys once, and anyone can check it offline.</p>
-        <div class="mt-8 text-sm"><Code code={JSON.stringify(saved.receipt, null, 2)} lang="json" theme={solenoidTheme} /></div>
-        <div class="mt-4 text-sm"><Code code={VERIFY} lang="ts" theme={solenoidTheme} /></div>
+        <p class={body}>This one came from the production API. Anyone with the public keys can check it offline.</p>
+        <CodeTabs name="receipt" tabs={[{ label: 'Receipt', lang: 'json', code: JSON.stringify(saved.receipt, null, 2) }, { label: 'Verify', lang: 'ts', code: VERIFY }]} />
+        <p class={note}><a class="underline hover:text-accent" href="/docs#receipts">Checking receipts offline, in the docs</a>.</p>
       </section>
 
-      <section id="limits" class="px-6 py-20 max-w-4xl mx-auto">
-        <h2 class={h2}>It limits any action your code can count</h2>
-        <p class={body}>Emails, refunds, deletes or fetches. With <code>--per child</code>, each customer or order gets its own count, so a limit of 1 allows one refund per order. If you cap model spend, keep your gateway for that.</p>
-        <p class="mt-4 font-mono text-xs text-zinc-500"><a class="underline hover:text-accent" href="/docs#at-most-once">At-most-once limits, in the docs</a>. Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>.</p>
-      </section>
+      <div class="px-6 py-20 max-w-4xl mx-auto grid gap-12 md:grid-cols-2">
+        <section id="limits">
+          <h2 class={h3}>Any action your code can count</h2>
+          <p class="mt-3 text-zinc-400"><code>--per child</code> gives each customer its own count, so <code>refunds=1</code> allows one refund per customer. To cap model costs, keep your gateway for that.</p>
+          <p class={note}><a class="underline hover:text-accent" href="/docs#at-most-once">Per-order limits, in the docs</a>. Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>.</p>
+        </section>
+        <section id="outage">
+          <h2 class={h3}>When Solenoid is down, sends stop</h2>
+          <p class="mt-3 text-zinc-400">Every limit fails closed by default. A limit set to <code>--on-outage open</code> lets actions through, unrecorded.</p>
+          <p class={note}><a class="underline hover:text-accent" href="/docs#setting-limits">Outage settings, in the docs</a>.</p>
+        </section>
+      </div>
 
-      <section id="outage" class="px-6 py-20 max-w-4xl mx-auto">
-        <h2 class={h2}>When Solenoid is down, sends stop by default</h2>
-        <p class={body}>Every limit fails closed: <code>spend</code> throws and the email doesn't go out. If every limit on a spend is set to <code>--on-outage open</code>, a client that saw that setting on an earlier spend lets the email through, unrecorded.</p>
-        <a href="/docs#setting-limits" class="mt-3 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">Setting limits, in the docs</a>
-      </section>
-
-      <section id="pricing-strip" class="px-6 py-12 max-w-4xl mx-auto border-y border-[#222]">
-        <p class="text-zinc-300">Start free: 100,000 spends each UTC calendar month. Pro is $29 USD a month with 2M spends each billing month, then $10 USD per extra million. Cancel anytime: Pro runs to the end of the paid month.</p>
-        <a href="/pricing" class="mt-3 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">See pricing</a>
+      <section id="pricing-strip" class="px-6 py-12 max-w-4xl mx-auto border-y border-[#222] flex flex-wrap items-baseline justify-between gap-4">
+        <p class="text-zinc-300">Free for 100,000 spends a month, then spends are refused until the month turns. Pro is $29 USD a month for 2M spends.</p>
+        <a href="/pricing" class="font-mono text-xs uppercase tracking-wider text-accent hover:underline">See pricing</a>
       </section>
 
       <section id="why" class="px-6 py-20 max-w-4xl mx-auto">
         <h2 class={h2}>A limit the agent can't talk past has to live outside it</h2>
-        <p class={body}>An agent can keep acting after its owner says stop. I built Solenoid to be that limit.</p>
+        <p class={body}>An agent can keep acting after its owner says stop. I built Solenoid to be that limit. The agent's spend key can't change a limit. Keep the admin key, which can, out of your support bot's environment.</p>
+        <p class={note}><a class="underline hover:text-accent" href="/docs#quickstart">The two keys, in the docs</a>.</p>
         <a href="/why" class="mt-3 inline-block font-mono text-xs uppercase tracking-wider text-accent hover:underline">My note on the /why page</a>
       </section>
     </div>

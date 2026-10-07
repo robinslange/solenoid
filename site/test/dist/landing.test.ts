@@ -26,19 +26,19 @@ describe('the landing page', () => {
   })
 
   it('gives the agent a prompt that names llms.txt, .env and SOLENOID_KEY, and never asks it to run init', () => {
-    for (const id of ['start-hero', 'start-bottom']) {
-      const prompt = textOf(byClass(section(id), 'agent-prompt')[0])
-      for (const s of ['https://solenoid.systems/llms.txt', '.env', 'SOLENOID_KEY']) expect(prompt).toContain(s)
-      expect(prompt).not.toContain('npx @solenoid.systems/cli init')
-    }
+    const prompt = textOf(byClass(section('start-bottom'), 'agent-prompt')[0])
+    for (const s of ['https://solenoid.systems/llms.txt', '.env', 'SOLENOID_KEY']) expect(prompt).toContain(s)
+    expect(prompt).not.toContain('npx @solenoid.systems/cli init')
   })
 
   it('pays off the hook with a per-customer limit in the prompt and the third step, and a stop command after the steps', () => {
-    for (const id of ['start-hero', 'start-bottom']) {
-      expect(textOf(byClass(section(id), 'agent-prompt')[0])).toContain('--per child')
-      expect(textOf(byClass(section(id), 'limit-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=3 --per child')
-    }
-    for (const id of ['hero', 'start']) expect(textOf(byClass(section(id), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=0')
+    expect(textOf(byClass(section('start-bottom'), 'agent-prompt')[0])).toContain('--per child')
+    expect(textOf(byClass(section('start-bottom'), 'limit-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=3 --per child')
+    expect(textOf(byClass(section('start'), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=0')
+  })
+
+  it('links the hero to the three steps', () => {
+    expect(hrefs(section('hero'))).toContain('#start')
   })
 
   it('puts a Start link to the bottom call to action in the header', () => {
@@ -59,6 +59,10 @@ describe('the landing page', () => {
 
   it('offers a TypeScript tab and a CLI tab, and nothing else', () => {
     expect(byClass(section('one-call'), 'tab-label').map(textOf)).toEqual(['TypeScript', 'CLI'])
+  })
+
+  it('puts the receipt and its offline check in tabs', () => {
+    expect(byClass(section('receipt'), 'tab-label').map(textOf)).toEqual(['Receipt', 'Verify'])
   })
 
   it('names model spend only to send it to the gateway, links the at-most-once test, pricing and the founder note', () => {

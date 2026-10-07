@@ -1,17 +1,17 @@
 ---
-interface Props { race: { limit: number; calls: number; lines: { at_ms: number; text: string }[] } }
+interface Props { race: { limit: number; calls: number; recorded: number; refused: number; lines: { at_ms: number; text: string }[] } }
 const { race } = Astro.props
 ---
-<div class="w-full max-w-3xl mx-auto border border-[#333]" style="background: rgba(16, 16, 18, 0.95);">
+<div class="w-full mx-auto border border-[#333]" style="background: rgba(16, 16, 18, 0.95);">
   <div class="flex items-center gap-2 px-4 py-3 border-b border-[#333]">
     <div class="flex gap-1.5" aria-hidden="true">
       <div class="w-3 h-3 rounded-full bg-[#333]"></div>
       <div class="w-3 h-3 rounded-full bg-[#333]"></div>
       <div class="w-3 h-3 rounded-full bg-[#333]"></div>
     </div>
-    <span class="font-mono text-[11px] text-zinc-600 ml-2">{race.calls} spends at once, limit {race.limit}</span>
+    <span class="font-mono text-[11px] text-zinc-600 ml-2">{race.recorded} recorded, {race.refused} refused</span>
   </div>
-  <ol class="race-lines px-5 py-3 font-mono text-xs leading-5 whitespace-pre text-zinc-300 overflow-x-auto">
+  <ol class="race-lines px-5 py-3 font-mono text-xs leading-5 text-zinc-300 overflow-x-auto [&>li]:whitespace-pre sm:grid sm:grid-flow-col sm:grid-rows-[repeat(var(--rows),auto)] gap-x-12" style={`--rows:${Math.ceil(race.lines.length / 2)}`}>
     {race.lines.map((l) => <li data-at={l.at_ms}>{l.text}</li>)}
   </ol>
 </div>

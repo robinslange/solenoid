@@ -12,17 +12,17 @@ const { id } = Astro.props
         <pre class="start-command flex-1 px-4 py-3 font-mono text-sm overflow-x-auto"><code>{INIT}</code></pre>
         <button type="button" data-copy={INIT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
       </div>
-      <p class="mt-2 text-sm text-zinc-500">It creates your account with no signup form and writes a spend key to <code>.env</code> as <code>SOLENOID_KEY</code>. Keep the admin key it prints safe: it sets every limit.</p>
+      <p class="mt-2 text-sm text-zinc-500">It creates your account with no signup form and writes a spend key to <code>.env</code> as <code>SOLENOID_KEY</code>. It also saves the admin key, which sets every limit, to <code>~/.config/solenoid/credentials</code>, where the CLI reads it. Keep a copy somewhere safe.</p>
     </li>
     <li>
-      <p class="text-sm text-zinc-300">2. Give your coding agent this prompt:</p>
+      <p class="text-sm text-zinc-300">2. Give your coding agent this prompt. If you renamed <code>{SCOPE}</code>, rename it here too.</p>
       <div class="mt-2 flex items-stretch border border-[#333] bg-[#0a0a0b]">
         <pre class="agent-prompt flex-1 min-w-0 px-4 py-3 font-mono text-sm whitespace-pre-wrap break-words"><code>{AGENT_PROMPT}</code></pre>
         <button type="button" data-copy={AGENT_PROMPT} class="px-3 font-mono text-[11px] uppercase tracking-wider text-zinc-500 hover:text-accent border-l border-[#333]">Copy</button>
       </div>
     </li>
     <li>
-      <p class="text-sm text-zinc-300">3. Run the limits it suggests, such as <code class="limit-command">{PER_CUSTOMER}</code>, which gives each customer three emails.</p>
+      <p class="text-sm text-zinc-300">3. Run the limits it suggests, such as <code class="limit-command">{PER_CUSTOMER}</code>, which gives each customer three emails in total.</p>
     </li>
   </ol>
   <p class="mt-8 text-sm text-zinc-400">Once your tools call <code>spend</code>, <code class="stop-command">{STOP}</code> stops every email from the next call on. Step 3's command resumes them.</p>
@@ -30,10 +30,11 @@ const { id } = Astro.props
 
 <script>
   for (const b of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
+    const label = b.textContent
     b.addEventListener('click', async () => {
       await navigator.clipboard.writeText(b.dataset.copy ?? '')
       b.textContent = 'Copied'
-      setTimeout(() => { b.textContent = 'Copy' }, 1500)
+      setTimeout(() => { b.textContent = label }, 1500)
     })
   }
 </script>

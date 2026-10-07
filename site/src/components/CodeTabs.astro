@@ -2,7 +2,7 @@
 import { Code } from 'astro:components'
 import { solenoidTheme } from '@/lib/shiki-theme'
 
-interface Props { name: string; tabs: { label: string; lang: 'ts' | 'sh'; code: string }[] }
+interface Props { name: string; tabs: { label: string; lang: 'ts' | 'sh' | 'json'; code: string }[] }
 const { name, tabs } = Astro.props
 const css = tabs
   .map((_, i) => `#${name}-${i}:checked~.tabs-header label[for="${name}-${i}"]{color:#FF3F00;border-bottom-color:#FF3F00}#${name}-${i}:checked~.tabs-panels .${name}-panel-${i}{display:block}`)
