@@ -15,12 +15,12 @@ const TS = `import { solenoid } from '@solenoid.systems/sdk'
 
 const sol = solenoid() // reads SOLENOID_KEY from the environment
 
-export async function reply(customer: string, email: Email) {
-  await sol.spend(\`support-bot/\${customer}\`, { emails: 1 }) // throws LimitExceeded at the limit
-  await mailer.send(email)
+export async function refund(order: string, amount: number) {
+  await sol.spend(\`support-bot/\${order}\`, { refunds: 1 }) // throws LimitExceeded at the limit
+  await payments.refund(order, amount)
 }`
-const CLI = `npx @solenoid.systems/cli limit support-bot emails=3 --per child
-npx @solenoid.systems/cli spend support-bot/c-1042 emails=1`
+const CLI = `npx @solenoid.systems/cli limit support-bot refunds=1 --per child
+npx @solenoid.systems/cli spend support-bot/o-1042 refunds=1`
 const VERIFY = `import { verifyChain, type Receipt } from '@solenoid.systems/sdk'
 import saved from './receipt.json' with { type: 'json' } // the receipt above
 import wellKnown from './solenoid.json' with { type: 'json' } // saved once from https://api.solenoid.systems/.well-known/solenoid.json
@@ -33,7 +33,7 @@ const h3 = 'font-sans font-bold text-xl'
 const body = 'mt-4 text-zinc-400 max-w-2xl'
 const note = 'mt-4 font-mono text-xs text-zinc-500'
 ---
-<Layout title="Solenoid: limits on your AI agent's emails, refunds and deletes" description="Solenoid limits what your AI agent's tools do. Each tool calls spend before it acts, and past the limit spend throws, so the action never runs. Every recorded spend gets a signed receipt.">
+<Layout title="Solenoid: limits on your AI agent's refunds, emails and deletes" description="Solenoid limits what your AI agent's tools do. Each tool calls spend before it acts, and past the limit spend throws, so the action never runs. Every recorded spend gets a signed receipt.">
   <Header pathname="/" />
   <main class="relative z-10">
     <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16">
@@ -60,7 +60,7 @@ const note = 'mt-4 font-mono text-xs text-zinc-500'
 
       <section id="one-call" class="px-6 py-20 max-w-4xl mx-auto">
         <h2 class={h2}>One call, in front of the action</h2>
-        <p class={body}>At the limit, <code>spend</code> throws and the email never goes out. It only limits tools that call it first.</p>
+        <p class={body}>At the limit, <code>spend</code> throws and the refund never runs. It only limits tools that call it first.</p>
         <CodeTabs name="one-call" tabs={[{ label: 'TypeScript', lang: 'ts', code: TS }, { label: 'CLI', lang: 'sh', code: CLI }]} />
       </section>
 
@@ -74,11 +74,11 @@ const note = 'mt-4 font-mono text-xs text-zinc-500'
       <div class="px-6 py-20 max-w-4xl mx-auto grid gap-12 md:grid-cols-2">
         <section id="limits">
           <h2 class={h3}>Any action your code can count</h2>
-          <p class="mt-3 text-zinc-400"><code>--per child</code> gives each customer or order its own count, so <code>refunds=1</code> allows one refund per order. To cap model costs, keep your gateway for that.</p>
+          <p class="mt-3 text-zinc-400">Emails work the same way: <code>emails=3 --per child</code> gives each customer three. To cap model costs, keep your gateway for that.</p>
           <p class={note}><a class="underline hover:text-accent" href="/docs#at-most-once">Per-order limits, in the docs</a>. Test: <a class="underline hover:text-accent" href={atTag('e2e/test/concurrency.test.ts')}>e2e/test/concurrency.test.ts</a>.</p>
         </section>
         <section id="outage">
-          <h2 class={h3}>When Solenoid is down, sends stop</h2>
+          <h2 class={h3}>When Solenoid is down, refunds stop</h2>
           <p class="mt-3 text-zinc-400">Every limit fails closed by default. A limit set to <code>--on-outage open</code> lets actions through, unrecorded.</p>
           <p class={note}><a class="underline hover:text-accent" href="/docs#setting-limits">Outage settings, in the docs</a>.</p>
         </section>

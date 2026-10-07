@@ -1,5 +1,5 @@
 ---
-import { AGENT_PROMPT, INIT, PER_CUSTOMER, SCOPE, STOP } from '@/lib/start'
+import { AGENT_PROMPT, INIT, PER_ORDER, SCOPE, STOP } from '@/lib/start'
 
 interface Props { id: string }
 const { id } = Astro.props
@@ -22,10 +22,10 @@ const { id } = Astro.props
       </div>
     </li>
     <li>
-      <p class="text-sm text-zinc-300">3. Run the limits it suggests, such as <code class="limit-command">{PER_CUSTOMER}</code>, which gives each customer three emails in total.</p>
+      <p class="text-sm text-zinc-300">3. Run the limits it suggests, such as <code class="limit-command">{PER_ORDER}</code>, which allows one refund per order.</p>
     </li>
   </ol>
-  <p class="mt-8 text-sm text-zinc-400">Once your tools call <code>spend</code>, <code class="stop-command">{STOP}</code> stops every email from the next call on. Step 3's command resumes them.</p>
+  <p class="mt-8 text-sm text-zinc-400">Once your tools call <code>spend</code>, <code class="stop-command">{STOP}</code> stops every refund from the next call on. Step 3's command resumes them.</p>
 </div>
 
 <script>

@@ -31,10 +31,10 @@ describe('the landing page', () => {
     expect(prompt).not.toContain('npx @solenoid.systems/cli init')
   })
 
-  it('pays off the hook with a per-customer limit in the prompt and the third step, and a stop command after the steps', () => {
+  it('pays off the hook with a per-order limit in the prompt and the third step, and a stop command after the steps', () => {
     expect(textOf(byClass(section('start-bottom'), 'agent-prompt')[0])).toContain('--per child')
-    expect(textOf(byClass(section('start-bottom'), 'limit-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=3 --per child')
-    expect(textOf(byClass(section('start'), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot emails=0')
+    expect(textOf(byClass(section('start-bottom'), 'limit-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot refunds=1 --per child')
+    expect(textOf(byClass(section('start'), 'stop-command')[0])).toBe('npx @solenoid.systems/cli limit support-bot refunds=0')
   })
 
   it('links the hero to the three steps', () => {
