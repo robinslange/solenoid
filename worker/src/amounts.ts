@@ -1,6 +1,6 @@
 import { ApiError } from './errors'
 
-export const MICRO = 1_000_000
+const MICRO = 1_000_000
 export const UNIT = /^[a-z][a-z0-9_]{0,31}$/
 const MAX_UNITS = 16
 
