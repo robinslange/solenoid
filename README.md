@@ -35,3 +35,5 @@ Then point your coding agent at https://solenoid.systems/llms.txt. It tells the 
 Docs: https://solenoid.systems/docs. Pricing: https://solenoid.systems/pricing.
 
 Report a security issue to security@solenoid.systems (see `SECURITY.md`). The runbook is `docs/runbook.md`.
+
+Solenoid is built by [omit](https://omit.nz).
