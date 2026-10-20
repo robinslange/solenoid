@@ -4,6 +4,7 @@
   "type": "module",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/robinslange/solenoid.git", "directory": "mcp" },
+  "author": { "name": "omit", "url": "https://omit.nz" },
   "homepage": "https://solenoid.systems",
   "bugs": { "url": "https://github.com/robinslange/solenoid/issues" },
   "engines": { "node": ">=20" },
