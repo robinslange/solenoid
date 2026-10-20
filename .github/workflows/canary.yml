@@ -24,3 +24,4 @@ jobs:
       - run: node e2e/canary.ts
         env:
           CANARY_REGION: github-us
+      - run: node site/scripts/check-routes.mjs https://solenoid.systems

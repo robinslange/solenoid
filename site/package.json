@@ -11,7 +11,8 @@
     "typecheck": "astro check",
     "screenshots": "node scripts/screenshots.mjs",
     "old-paths": "node scripts/old-paths.mjs",
-    "deploy": "wrangler deploy"
+    "check-routes": "node scripts/check-routes.mjs https://solenoid.systems",
+    "deploy": "wrangler deploy && node scripts/check-routes.mjs https://solenoid.systems"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
