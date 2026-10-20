@@ -60,7 +60,7 @@ export const changedMail = (to: string, tenant: string): Mail => ({
   ].join('\n\n'),
 })
 
-export const SECURITY_ADDRESS = 'security@solenoid.systems'
+const SECURITY_ADDRESS = 'security@solenoid.systems'
 
 export const duplicateMail = (tenant: string, subscription: string, session: string, cancelled: boolean): Mail => ({
   to: SECURITY_ADDRESS,

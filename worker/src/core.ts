@@ -6,10 +6,10 @@ import { ancestors, childOn, lastSegment, parentOf, within } from './scope'
 import { nextReset, perChild, windowStart, type Per } from './windows'
 import { CODE_TTL_MS, DAY_MS, HOUR_MS, MAX_ATTACH_SENDS_PER_DAY, MAX_FAILS_PER_DAY, MAX_FAILS_PER_HOUR, MAX_LIVE_CODES, MAX_SENDS_PER_HOUR, hashCode, newCode, type Purpose } from './codes'
 
-export const FREE_SPENDS = 100_000
+const FREE_SPENDS = 100_000
 
 export type Receipt = Sealed & { id: string; replay: boolean }
-export type Remaining = Record<string, { scope: string; left: number; resets: string | null }>
+type Remaining = Record<string, { scope: string; left: number; resets: string | null }>
 export type Warning = { scope: string; unit: string; used: number; limit: number }
 export type SpendOk = { receipt: Receipt; remaining: Remaining; on_outage: 'open' | 'closed'; warnings: Warning[] }
 export type PutReq = { limits: Record<string, number | null>; per: Per; onOutage: 'open' | 'closed'; warnAt: number | null; rotateKeys: boolean; rotateAdmin: boolean }
@@ -17,9 +17,9 @@ export type LimitView = { scope: string; unit: string; limit: number; per: Per; 
 export type View = { scope: string; epoch: number; limits: LimitView[]; children: string[]; entries: Receipt[]; next: number | null }
 
 export type Sql = { exec(query: string, ...params: unknown[]): { toArray(): Record<string, any>[] }; transactionSync<T>(fn: () => T): T }
-export type TenantEnv = { SIGNING_KEY: string; SIGNING_KID: string; MASTER: string }
+type TenantEnv = { SIGNING_KEY: string; SIGNING_KID: string; MASTER: string }
 export type TenantApi = Pick<Tenant, 'init' | 'spend' | 'settle' | 'put' | 'get' | 'attachStart' | 'attachVerify' | 'recoverStart' | 'recoverFinish' | 'billing' | 'checkoutSaved' | 'billingStart' | 'duplicateSettled' | 'billingEnd' | 'meterDue' | 'meterCommit'>
-export type MeterDue = { customer: string; identifier: string; value: number; to: number }
+type MeterDue = { customer: string; identifier: string; value: number; to: number }
 export type Billing = { plan: string; customer: string | null; subscription: string | null; checkout: string | null }
 const CHECKOUT_REUSE_MS = 5 * 60_000
 const CHECKOUT_KEYS = ['checkout_session', 'checkout_url', 'checkout_expires']

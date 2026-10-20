@@ -1,16 +1,16 @@
 import type { TenantApi } from './core'
 import { hmacMatches } from './keys'
 
-export const METER_EVENT = 'spends'
-export const RETURN_URL = 'https://solenoid.systems/pricing'
-export const STRIPE_VERSION = '2026-08-26.dahlia'
-export const CHECKOUT_TTL_S = 60 * 60
+const METER_EVENT = 'spends'
+const RETURN_URL = 'https://solenoid.systems/pricing'
+const STRIPE_VERSION = '2026-08-26.dahlia'
+const CHECKOUT_TTL_S = 60 * 60
 const API = 'https://api.stripe.com/v1'
 const TOLERANCE_S = 300
 
 export type BillingEnv = { STRIPE_SECRET_KEY?: string; STRIPE_WEBHOOK_SECRET?: string; STRIPE_PRICE_PRO?: string; STRIPE_PRICE_SPENDS?: string; STRIPE_PORTAL_CONFIG?: string }
-export type BillingConfig = { secretKey: string; webhookSecret: string; pricePro: string; priceSpends: string; portalConfig: string }
-export type CheckoutSession = { id: string; url: string; expires: number }
+type BillingConfig = { secretKey: string; webhookSecret: string; pricePro: string; priceSpends: string; portalConfig: string }
+type CheckoutSession = { id: string; url: string; expires: number }
 export type Stripe = {
   checkout(tenant: string, customer: string | null, nowMs: number): Promise<CheckoutSession>
   portal(customer: string): Promise<string>
